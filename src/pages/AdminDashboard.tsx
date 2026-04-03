@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { mockTickets, DEPARTMENTS, type Department, type Ticket } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import AdminGuard from "@/components/AdminGuard";
+import AppFooter from "@/components/AppFooter";
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
   return (
