@@ -1,21 +1,31 @@
-import { useState } from "react";
-import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle, LocateFixed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import { type TicketCategory, getDepartmentForCategory } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 const CATEGORIES: TicketCategory[] = ['Pothole', 'Pole Fault', 'Water Leak', 'Waste Overflow', 'Drainage Block', 'Road Damage'];
 
 export default function ReportIssue() {
   const { toast } = useToast();
+  const geo = useGeolocation();
   const [step, setStep] = useState<'upload' | 'classify' | 'details' | 'done'>('upload');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [aiCategory, setAiCategory] = useState<TicketCategory | null>(null);
   const [description, setDescription] = useState('');
   const [duplicateFound, setDuplicateFound] = useState(false);
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
+
+  useEffect(() => {
+    geo.requestLocation();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -33,10 +43,18 @@ export default function ReportIssue() {
     setTimeout(() => {
       const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
       setAiCategory(randomCat);
-      const hasDuplicate = Math.random() > 0.7;
-      setDuplicateFound(hasDuplicate);
+      setDuplicateFound(Math.random() > 0.7);
       setStep('details');
     }, 2000);
+  };
+
+  const handleManualLocation = () => {
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      geo.setManualLocation(lat, lng);
+      toast({ title: "Location set manually", description: `${lat.toFixed(6)}, ${lng.toFixed(6)}` });
+    }
   };
 
   const handleSubmit = () => {
@@ -49,9 +67,9 @@ export default function ReportIssue() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
-      <div className="container max-w-lg py-8 space-y-6">
+      <div className="container max-w-lg py-8 space-y-6 flex-1">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gradient-navy">Report an Issue</h1>
           <p className="text-sm text-muted-foreground mt-1">Snap, classify, submit — in 3 seconds</p>
@@ -87,9 +105,37 @@ export default function ReportIssue() {
                 <span><Upload className="h-5 w-5 mr-2" /> Capture / Upload Photo</span>
               </Button>
             </label>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-              <MapPin className="h-3 w-3" />
-              <span>GPS: 18.5204° N, 73.8567° E — FC Road, Pune</span>
+
+            {/* GPS Info */}
+            <div className="space-y-2">
+              {geo.loading ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Acquiring high-precision GPS...</span>
+                </div>
+              ) : geo.lat && geo.lng ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                  <MapPin className="h-3 w-3" />
+                  <span>GPS: {geo.lat}° N, {geo.lng}° E — {geo.address}</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-destructive">{geo.error || "GPS unavailable"}</p>
+                  <p className="text-xs text-muted-foreground">Enter coordinates manually:</p>
+                  <div className="flex gap-2">
+                    <Input placeholder="Latitude" value={manualLat} onChange={e => setManualLat(e.target.value)} className="text-xs h-8" />
+                    <Input placeholder="Longitude" value={manualLng} onChange={e => setManualLng(e.target.value)} className="text-xs h-8" />
+                    <Button variant="secondary" size="sm" className="h-8 text-xs" onClick={handleManualLocation}>
+                      <LocateFixed className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {!geo.loading && geo.lat && (
+                <Button variant="ghost" size="sm" className="text-xs h-7" onClick={geo.requestLocation}>
+                  <LocateFixed className="h-3 w-3 mr-1" /> Re-fetch GPS
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -127,9 +173,15 @@ export default function ReportIssue() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Location</span>
                 <span className="text-sm text-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> FC Road, Pune
+                  <MapPin className="h-3 w-3" /> {geo.address || "Unknown"}
                 </span>
               </div>
+              {geo.lat && geo.lng && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-muted-foreground">Coordinates</span>
+                  <span className="text-xs font-mono text-foreground">{geo.lat}, {geo.lng}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">EXIF Check</span>
                 <Badge variant="outline" className="bg-success/10 border-success/30 text-success text-xs">
@@ -185,6 +237,7 @@ export default function ReportIssue() {
           </div>
         )}
       </div>
+      <AppFooter />
     </div>
   );
 }
