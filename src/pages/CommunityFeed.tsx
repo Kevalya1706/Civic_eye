@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { mockTickets, DEPARTMENTS, type Department } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import AppFooter from "@/components/AppFooter";
 
 export default function CommunityFeed() {
   const { toast } = useToast();
