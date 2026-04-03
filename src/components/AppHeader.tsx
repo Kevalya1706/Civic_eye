@@ -10,6 +10,7 @@ const navItems = [
   { label: "My Tickets", path: "/my-tickets" },
   { label: "Leaderboard", path: "/leaderboard" },
   { label: "Admin", path: "/admin" },
+  { label: "Login", path: "/login" },
 ];
 
 export default function AppHeader() {

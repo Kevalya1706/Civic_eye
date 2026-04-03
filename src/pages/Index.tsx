@@ -2,6 +2,7 @@ import { Camera, Shield, BarChart3, Users, ArrowRight, Eye, Zap, MapPin } from "
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 
 const features = [
   { icon: Camera, title: "3-Second Reporting", desc: "Snap a photo, auto-geotagged with AI classification." },
@@ -48,6 +49,7 @@ export default function Index() {
                   Report Issue
                 </Button>
               </Link>
+              <p className="text-xs text-muted-foreground mt-2 w-full text-center">Can be accessed by authorised Member</p>
               <Link to="/admin">
                 <Button variant="navy" size="lg" className="text-base px-8 h-12">
                   <Eye className="h-5 w-5 mr-2" />
@@ -117,12 +119,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>CivicEye AI — Built by Team Minions 🍌</p>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 }

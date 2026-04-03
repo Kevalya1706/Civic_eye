@@ -9,6 +9,7 @@ import CommunityFeed from "./pages/CommunityFeed";
 import MyTickets from "./pages/MyTickets";
 import Leaderboard from "./pages/Leaderboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/report" element={<ReportIssue />} />
           <Route path="/feed" element={<CommunityFeed />} />
           <Route path="/my-tickets" element={<MyTickets />} />

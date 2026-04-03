@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { mockTickets, DEPARTMENTS, type Department, type Ticket } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import AdminGuard from "@/components/AdminGuard";
+import AppFooter from "@/components/AppFooter";
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
   return (
@@ -68,7 +70,7 @@ function VerifyDialog({ ticket, onVerify }: { ticket: Ticket; onVerify: (id: str
   );
 }
 
-export default function AdminDashboard() {
+function AdminDashboardInner() {
   const { toast } = useToast();
   const [tickets, setTickets] = useState(mockTickets);
   const [deptFilter, setDeptFilter] = useState<Department | 'All'>('All');
@@ -165,6 +167,15 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
+      <AppFooter />
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <AdminGuard>
+      <AdminDashboardInner />
+    </AdminGuard>
   );
 }
