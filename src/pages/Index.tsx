@@ -118,12 +118,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 py-8">
-        <div className="container text-center text-sm text-muted-foreground">
-          <p>CivicEye AI — Built by Team Minions 🍌</p>
-        </div>
-      </footer>
+      <AppFooter />
     </div>
   );
 }
