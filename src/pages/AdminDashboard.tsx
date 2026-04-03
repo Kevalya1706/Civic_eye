@@ -68,7 +68,7 @@ function VerifyDialog({ ticket, onVerify }: { ticket: Ticket; onVerify: (id: str
   );
 }
 
-export default function AdminDashboard() {
+function AdminDashboardInner() {
   const { toast } = useToast();
   const [tickets, setTickets] = useState(mockTickets);
   const [deptFilter, setDeptFilter] = useState<Department | 'All'>('All');
