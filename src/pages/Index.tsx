@@ -48,6 +48,7 @@ export default function Index() {
                   Report Issue
                 </Button>
               </Link>
+              <p className="text-xs text-muted-foreground mt-2 w-full text-center">Can be accessed by authorised Member</p>
               <Link to="/admin">
                 <Button variant="navy" size="lg" className="text-base px-8 h-12">
                   <Eye className="h-5 w-5 mr-2" />
