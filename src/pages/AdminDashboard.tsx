@@ -167,6 +167,15 @@ function AdminDashboardInner() {
           ))}
         </div>
       </div>
+      <AppFooter />
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <AdminGuard>
+      <AdminDashboardInner />
+    </AdminGuard>
   );
 }
