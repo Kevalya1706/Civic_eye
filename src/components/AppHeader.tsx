@@ -1,7 +1,8 @@
-import { Eye, Menu, X } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Eye, Menu, X, LogOut } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { label: "Home", path: "/" },
@@ -10,12 +11,18 @@ const navItems = [
   { label: "My Tickets", path: "/my-tickets" },
   { label: "Leaderboard", path: "/leaderboard" },
   { label: "Admin", path: "/admin" },
-  { label: "Login", path: "/login" },
 ];
 
 export default function AppHeader() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { isLoggedIn, displayName, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-card/80 backdrop-blur-xl">
@@ -39,6 +46,14 @@ export default function AppHeader() {
               </Button>
             </Link>
           ))}
+          {isLoggedIn && (
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-border">
+              <span className="text-sm font-medium text-foreground">{displayName}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </nav>
 
         <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -58,6 +73,11 @@ export default function AppHeader() {
               </Button>
             </Link>
           ))}
+          {isLoggedIn && (
+            <Button variant="ghost" className="w-full justify-start text-destructive" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-2" /> Logout ({displayName})
+            </Button>
+          )}
         </div>
       )}
     </header>

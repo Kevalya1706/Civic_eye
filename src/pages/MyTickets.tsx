@@ -3,8 +3,10 @@ import TicketCard from "@/components/TicketCard";
 import { Badge } from "@/components/ui/badge";
 import { mockTickets, mockUsers } from "@/lib/mockData";
 import { Trophy, Star, Ticket } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function MyTickets() {
+  const { displayName } = useAuth();
   const user = mockUsers[0];
   const userTickets = mockTickets.filter(t => t.userId === user.id);
 
@@ -16,16 +18,16 @@ export default function MyTickets() {
         <div className="glass-card rounded-2xl p-6">
           <div className="flex items-center gap-4">
             <div className="h-14 w-14 rounded-xl gradient-navy flex items-center justify-center text-xl font-bold text-primary-foreground">
-              {user.name.charAt(0)}
+              {displayName.charAt(0)}
             </div>
             <div className="flex-1">
-              <h2 className="text-lg font-bold text-foreground">{user.name}</h2>
+              <h2 className="text-lg font-bold text-foreground">{displayName}</h2>
               <Badge variant="outline" className="bg-accent/10 border-accent/20 text-accent-foreground text-xs mt-1">
-                {user.badge}
+                Trusted Reporter
               </Badge>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-extrabold text-gradient-navy">{user.civicPoints}</p>
+              <p className="text-2xl font-extrabold text-gradient-navy">100</p>
               <p className="text-xs text-muted-foreground">Civic Points</p>
             </div>
           </div>
@@ -34,21 +36,21 @@ export default function MyTickets() {
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Ticket className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">{user.ticketsReported}</p>
+              <p className="text-lg font-bold text-foreground">{userTickets.length}</p>
               <p className="text-xs text-muted-foreground">Reported</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Star className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">{user.trustScore}%</p>
+              <p className="text-lg font-bold text-foreground">85%</p>
               <p className="text-xs text-muted-foreground">Trust Score</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Trophy className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">{user.ticketsVerified}</p>
+              <p className="text-lg font-bold text-foreground">{userTickets.filter(t => t.status === 'Resolved').length}</p>
               <p className="text-xs text-muted-foreground">Verified</p>
             </div>
           </div>
