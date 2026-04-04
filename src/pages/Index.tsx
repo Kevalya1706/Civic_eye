@@ -42,20 +42,22 @@ export default function Index() {
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
               Report civic issues in seconds. AI classifies, prioritizes, and routes them to the right department — transparently.
             </p>
-            <div className="flex items-center justify-center gap-4 pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
               <Link to="/report">
                 <Button variant="civic" size="lg" className="text-base px-8 h-12">
                   <Camera className="h-5 w-5 mr-2" />
                   Report Issue
                 </Button>
               </Link>
-              <p className="text-xs text-muted-foreground mt-2 w-full text-center">Can be accessed by authorised Member</p>
-              <Link to="/admin">
-                <Button variant="navy" size="lg" className="text-base px-8 h-12">
-                  <Eye className="h-5 w-5 mr-2" />
-                  Admin Dashboard
-                </Button>
-              </Link>
+              <div className="flex flex-col items-center">
+                <Link to="/admin">
+                  <Button variant="navy" size="lg" className="text-base px-8 h-12">
+                    <Eye className="h-5 w-5 mr-2" />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+                <p className="text-xs text-muted-foreground mt-2 italic">Authorised Member only</p>
+              </div>
             </div>
           </div>
         </div>

@@ -2,18 +2,24 @@ import { useState } from "react";
 import { Eye, Mail, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import AppFooter from "@/components/AppFooter";
 
 export default function Login() {
   const { toast } = useToast();
+  const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) return;
+    login(email);
     toast({ title: "Login Successful", description: "Welcome to CivicEye AI!" });
+    navigate("/");
   };
 
   return (
@@ -22,11 +28,11 @@ export default function Login() {
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
           <div className="text-center">
-            <Link to="/" className="inline-flex items-center gap-2.5">
+            <div className="inline-flex items-center gap-2.5">
               <div className="h-12 w-12 rounded-xl gradient-accent flex items-center justify-center shadow-lg">
                 <Eye className="h-7 w-7 text-accent-foreground" />
               </div>
-            </Link>
+            </div>
             <h1 className="text-2xl font-bold text-gradient-navy mt-4">Sign in to CivicEye</h1>
             <p className="text-sm text-muted-foreground mt-1">Use your account to continue</p>
           </div>
@@ -84,7 +90,7 @@ export default function Login() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground">
-            Don't have an account? <Link to="/report" className="text-primary font-medium hover:underline">Report as guest</Link>
+            Don't have an account? <Link to="/login" className="text-primary font-medium hover:underline">Report as guest</Link>
           </p>
         </div>
       </div>
