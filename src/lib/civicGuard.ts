@@ -138,26 +138,37 @@ export async function hashImage(dataUrl: string): Promise<string> {
 
 // ─── EXIF Trust Check (simulated) ───────────────────────────────────────────
 export interface ExifTrust {
-  trustLevel: 'high' | 'medium' | 'low';
+  trustLevel: 'high' | 'medium' | 'low' | 'fraudulent';
   reason: string;
   timestamp: Date | null;
   gpsMatch: boolean;
+  gpsOffsetMeters: number;
 }
 
 export function checkExifTrust(userLat: number | null, userLng: number | null): ExifTrust {
   // Simulate EXIF extraction — in production, parse actual EXIF from the image binary
   const photoAge = Math.random() * 120; // simulated minutes since photo was taken
-  const gpsOffset = Math.random() * 50; // simulated km offset from user location
+  const gpsOffsetMeters = Math.random() * 200; // simulated meter offset from user location
 
   const isOld = photoAge > 60;
-  const isFarAway = gpsOffset > 10;
+  const isSpoofed = gpsOffsetMeters > 50; // >50m = potential fraud
 
-  if (isOld && isFarAway) {
+  if (isSpoofed && isOld) {
     return {
-      trustLevel: 'low',
-      reason: 'Photo timestamp >1hr old and GPS location mismatch detected',
+      trustLevel: 'fraudulent',
+      reason: 'Fraudulent/Spoofed: Photo GPS differs >50m from live browser GPS and timestamp is >1hr old',
       timestamp: new Date(Date.now() - photoAge * 60000),
       gpsMatch: false,
+      gpsOffsetMeters: Math.round(gpsOffsetMeters),
+    };
+  }
+  if (isSpoofed) {
+    return {
+      trustLevel: 'fraudulent',
+      reason: `Fraudulent/Spoofed: Photo EXIF GPS differs ${Math.round(gpsOffsetMeters)}m from live browser GPS (threshold: 50m)`,
+      timestamp: new Date(),
+      gpsMatch: false,
+      gpsOffsetMeters: Math.round(gpsOffsetMeters),
     };
   }
   if (isOld) {
@@ -166,20 +177,14 @@ export function checkExifTrust(userLat: number | null, userLng: number | null): 
       reason: 'Photo timestamp is more than 1 hour old',
       timestamp: new Date(Date.now() - photoAge * 60000),
       gpsMatch: true,
-    };
-  }
-  if (isFarAway) {
-    return {
-      trustLevel: 'medium',
-      reason: 'Photo GPS does not match current user location',
-      timestamp: new Date(),
-      gpsMatch: false,
+      gpsOffsetMeters: Math.round(gpsOffsetMeters),
     };
   }
   return {
     trustLevel: 'high',
-    reason: 'Photo is recent and GPS matches current location',
+    reason: `Photo is recent and GPS matches within ${Math.round(gpsOffsetMeters)}m`,
     timestamp: new Date(),
     gpsMatch: true,
+    gpsOffsetMeters: Math.round(gpsOffsetMeters),
   };
 }

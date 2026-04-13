@@ -3,18 +3,22 @@ import { useState, useCallback } from "react";
 interface GeoState {
   lat: number | null;
   lng: number | null;
+  accuracy: number | null;
   address: string;
   loading: boolean;
   error: string | null;
+  locked: boolean; // true when high-precision fix acquired
 }
 
 export function useGeolocation() {
   const [geo, setGeo] = useState<GeoState>({
     lat: null,
     lng: null,
+    accuracy: null,
     address: "Fetching location...",
     loading: false,
     error: null,
+    locked: false,
   });
 
   const requestLocation = useCallback(() => {
@@ -29,6 +33,8 @@ export function useGeolocation() {
       async (position) => {
         const lat = parseFloat(position.coords.latitude.toFixed(6));
         const lng = parseFloat(position.coords.longitude.toFixed(6));
+        const accuracy = Math.round(position.coords.accuracy * 100) / 100;
+        const locked = accuracy <= 10; // sub-10m = satellite lock
 
         // Reverse geocode
         let address = `${lat}° N, ${lng}° E`;
@@ -45,7 +51,7 @@ export function useGeolocation() {
           // fallback to coords
         }
 
-        setGeo({ lat, lng, address, loading: false, error: null });
+        setGeo({ lat, lng, accuracy, address, loading: false, error: null, locked });
       },
       (err) => {
         setGeo(prev => ({
@@ -66,9 +72,11 @@ export function useGeolocation() {
     setGeo({
       lat: parseFloat(lat.toFixed(6)),
       lng: parseFloat(lng.toFixed(6)),
+      accuracy: 0,
       address: address || `${lat.toFixed(6)}° N, ${lng.toFixed(6)}° E`,
       loading: false,
       error: null,
+      locked: true, // manual entry is trusted
     });
   }, []);
 
