@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle, LocateFixed, ShieldAlert } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle, LocateFixed, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -7,74 +7,119 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
-import { type TicketCategory, getDepartmentForCategory } from "@/lib/mockData";
+import { getDepartmentForCategory } from "@/lib/mockData";
+import {
+  classifyIssue,
+  validateScene,
+  hashImage,
+  checkExifTrust,
+  CONFIDENCE_THRESHOLD,
+  type ClassificationResult,
+  type ExifTrust,
+} from "@/lib/civicGuard";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import SceneRejection from "@/components/report/SceneRejection";
+import ClassificationCard from "@/components/report/ClassificationCard";
+import LowConfidenceWarning from "@/components/report/LowConfidenceWarning";
 
-const KEYWORD_MAP: { keywords: string[]; category: TicketCategory }[] = [
-  { keywords: ['pothole', 'road', 'crack', 'pavement'], category: 'Road Damage' },
-  { keywords: ['pole', 'light', 'streetlight', 'lamp'], category: 'Pole Fault' },
-  { keywords: ['leak', 'drainage', 'sewage', 'pipe', 'water leak'], category: 'Water Leak' },
-  { keywords: ['overflow', 'waste', 'garbage', 'trash', 'dump'], category: 'Waste Overflow' },
-  { keywords: ['drain', 'block', 'clog', 'flood'], category: 'Drainage Block' },
-];
-
-function classifyFromDescription(text: string): TicketCategory {
-  const lower = text.toLowerCase();
-  for (const entry of KEYWORD_MAP) {
-    if (entry.keywords.some(k => lower.includes(k))) {
-      return entry.category;
-    }
-  }
-  // Fallback: random from common
-  const fallbacks: TicketCategory[] = ['Pothole', 'Road Damage', 'Water Leak'];
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
-}
+type Step = 'upload' | 'validating' | 'classify' | 'details' | 'confirm' | 'done';
 
 export default function ReportIssue() {
   const { toast } = useToast();
   const geo = useGeolocation();
-  const [step, setStep] = useState<'upload' | 'classify' | 'details' | 'confirm' | 'done'>('upload');
+
+  const [step, setStep] = useState<Step>('upload');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [aiCategory, setAiCategory] = useState<TicketCategory | null>(null);
+  const [imageHash, setImageHash] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [duplicateFound, setDuplicateFound] = useState(false);
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
-  const [aiBlocked, setAiBlocked] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  useEffect(() => {
-    geo.requestLocation();
+  // Rejection states
+  const [sceneError, setSceneError] = useState<string | null>(null);
+  const [aiBlocked, setAiBlocked] = useState(false);
+
+  // Classification pipeline results
+  const [classification, setClassification] = useState<ClassificationResult | null>(null);
+  const [exifTrust, setExifTrust] = useState<ExifTrust | null>(null);
+
+  useEffect(() => { geo.requestLocation(); }, []);
+
+  const resetFlow = useCallback(() => {
+    setStep('upload');
+    setImagePreview(null);
+    setImageHash(null);
+    setDescription('');
+    setClassification(null);
+    setExifTrust(null);
+    setSceneError(null);
+    setAiBlocked(false);
+    setDuplicateFound(false);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ─── File Upload Handler ────────────────────────────────────────────────
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = () => {
-      setImagePreview(reader.result as string);
-      // Simulate AI-generated image check (5% chance flagged)
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setImagePreview(dataUrl);
+      setSceneError(null);
+      setAiBlocked(false);
+
+      // Step 0: Synthetic media check (5% simulated block rate)
       if (Math.random() < 0.05) {
         setAiBlocked(true);
         return;
       }
-      setAiBlocked(false);
-      simulateAI();
+
+      // SHA-256 hash for duplicate detection
+      setStep('validating');
+      const hash = await hashImage(dataUrl);
+      setImageHash(hash);
+
+      // EXIF trust check
+      const trust = checkExifTrust(geo.lat, geo.lng);
+      setExifTrust(trust);
+
+      // Proceed to AI classification
+      runClassification();
     };
     reader.readAsDataURL(file);
   };
 
-  const simulateAI = () => {
+  // ─── Classification Pipeline ────────────────────────────────────────────
+  const runClassification = useCallback(() => {
     setStep('classify');
     setTimeout(() => {
-      const cat = classifyFromDescription(description);
-      setAiCategory(cat);
+      const result = classifyIssue(description);
+      setClassification(result);
       setDuplicateFound(Math.random() > 0.7);
       setStep('details');
-    }, 2000);
-  };
+    }, 2200);
+  }, [description]);
 
+  // Re-classify when description changes on details step
+  useEffect(() => {
+    if (step === 'details' && description.length > 3) {
+      // Scene validation first
+      const scene = validateScene(description);
+      if (!scene.valid) {
+        setSceneError(scene.reason || 'Invalid scene');
+        return;
+      }
+      setSceneError(null);
+      const result = classifyIssue(description);
+      setClassification(result);
+    }
+  }, [description, step]);
+
+  // ─── Manual Location ────────────────────────────────────────────────────
   const handleManualLocation = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
@@ -84,8 +129,13 @@ export default function ReportIssue() {
     }
   };
 
+  // ─── Submit ─────────────────────────────────────────────────────────────
   const handleSubmitClick = () => {
-    if (!aiCategory) return;
+    if (!classification?.category) return;
+    if (!classification.accepted) {
+      toast({ title: "Low Confidence", description: "Please retake the photo for better classification.", variant: "destructive" });
+      return;
+    }
     setConfirmOpen(true);
   };
 
@@ -94,17 +144,13 @@ export default function ReportIssue() {
     setStep('done');
     toast({
       title: "Issue Reported! 🎉",
-      description: `Routed to ${getDepartmentForCategory(aiCategory!)}. You earned +10 Civic Points.`,
+      description: `Routed to ${classification?.department}. You earned +10 Civic Points.`,
     });
   };
 
-  // Re-classify when description changes and we're on details step
-  useEffect(() => {
-    if (step === 'details' && description.length > 3) {
-      const newCat = classifyFromDescription(description);
-      setAiCategory(newCat);
-    }
-  }, [description]);
+  const stepIndex = ['upload', 'validating', 'classify', 'details', 'done'].indexOf(
+    step === 'confirm' ? 'details' : step === 'validating' ? 'classify' : step
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -112,42 +158,38 @@ export default function ReportIssue() {
       <div className="container max-w-lg py-8 space-y-6 flex-1">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gradient-navy">Report an Issue</h1>
-          <p className="text-sm text-muted-foreground mt-1">Snap, classify, submit — in 3 seconds</p>
+          <p className="text-sm text-muted-foreground mt-1">Snap, classify, submit — powered by CivicGuard AI</p>
         </div>
 
-        {/* Progress */}
+        {/* Progress Steps */}
         <div className="flex items-center gap-2 justify-center">
-          {['Upload', 'AI Scan', 'Details', 'Done'].map((label, i) => {
-            const stepIndex = ['upload', 'classify', 'details', 'done'].indexOf(step === 'confirm' ? 'details' : step);
-            return (
-              <div key={label} className="flex items-center gap-2">
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  i <= stepIndex ? 'gradient-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
-                }`}>
-                  {i < stepIndex ? <CheckCircle className="h-4 w-4" /> : i + 1}
-                </div>
-                {i < 3 && <div className={`w-8 h-0.5 ${i < stepIndex ? 'bg-accent' : 'bg-border'}`} />}
+          {['Upload', 'AI Scan', 'Details', 'Done'].map((label, i) => (
+            <div key={label} className="flex items-center gap-2">
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                i <= stepIndex ? 'gradient-accent text-accent-foreground' : 'bg-muted text-muted-foreground'
+              }`}>
+                {i < stepIndex ? <CheckCircle className="h-4 w-4" /> : i + 1}
               </div>
-            );
-          })}
+              {i < 3 && <div className={`w-8 h-0.5 ${i < stepIndex ? 'bg-accent' : 'bg-border'}`} />}
+            </div>
+          ))}
         </div>
 
-        {/* AI Blocked */}
+        {/* AI-Generated Image Block */}
         {aiBlocked && (
-          <div className="glass-card rounded-2xl p-6 text-center space-y-3 border-destructive/30 bg-destructive/5 animate-fade-in-up">
-            <ShieldAlert className="h-10 w-10 text-destructive mx-auto" />
-            <h3 className="text-base font-bold text-destructive">Invalid Submission</h3>
-            <p className="text-sm text-muted-foreground">
-              Image detected as AI-Generated. Please provide a real-time, authentic photo of the issue.
-            </p>
-            <Button variant="outline" onClick={() => { setAiBlocked(false); setImagePreview(null); setStep('upload'); }}>
-              Try Again
-            </Button>
-          </div>
+          <SceneRejection
+            message="Image detected as AI-Generated. Please provide a real-time, authentic photo of the issue."
+            onRetry={resetFlow}
+          />
         )}
 
-        {/* Upload Step */}
-        {step === 'upload' && !aiBlocked && (
+        {/* Scene Rejection (non-civic object) */}
+        {sceneError && !aiBlocked && (
+          <SceneRejection message={sceneError} onRetry={resetFlow} />
+        )}
+
+        {/* ── Upload Step ──────────────────────────────────────────────── */}
+        {step === 'upload' && !aiBlocked && !sceneError && (
           <div className="glass-card rounded-2xl p-8 text-center space-y-4 animate-fade-in-up">
             <div className="h-20 w-20 rounded-2xl gradient-accent flex items-center justify-center mx-auto">
               <Camera className="h-10 w-10 text-accent-foreground" />
@@ -164,8 +206,7 @@ export default function ReportIssue() {
             <div className="space-y-2">
               {geo.loading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Acquiring high-precision GPS...</span>
+                  <Loader2 className="h-3 w-3 animate-spin" /> Acquiring high-precision GPS...
                 </div>
               ) : geo.lat && geo.lng ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
@@ -194,56 +235,61 @@ export default function ReportIssue() {
           </div>
         )}
 
-        {/* Classifying */}
-        {step === 'classify' && (
+        {/* ── Validating / Classifying ─────────────────────────────────── */}
+        {(step === 'validating' || step === 'classify') && (
           <div className="glass-card rounded-2xl p-8 text-center space-y-4 animate-fade-in-up">
             {imagePreview && (
               <img src={imagePreview} alt="Uploaded" className="w-full h-48 object-cover rounded-xl" />
             )}
             <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
-            <p className="text-sm font-medium text-foreground">AI is analyzing your photo...</p>
-            <p className="text-xs text-muted-foreground">Running YOLOv8 classification & EXIF metadata check</p>
+            <p className="text-sm font-medium text-foreground">
+              {step === 'validating' ? 'Running CivicGuard Pre-Processor...' : 'Triple-Pass Classification Engine...'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {step === 'validating'
+                ? 'SHA-256 hashing • EXIF metadata extraction • Scene validation'
+                : 'Tier 1: Detection → Tier 2: Taxonomy → Tier 3: Confidence threshold'}
+            </p>
+            {imageHash && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center font-mono">
+                <Hash className="h-3 w-3" /> {imageHash.substring(0, 16)}…
+              </div>
+            )}
           </div>
         )}
 
-        {/* Details Step */}
-        {(step === 'details' || step === 'confirm') && (
+        {/* ── Details Step ─────────────────────────────────────────────── */}
+        {(step === 'details' || step === 'confirm') && !sceneError && (
           <div className="space-y-4 animate-fade-in-up">
             {imagePreview && (
               <img src={imagePreview} alt="Uploaded" className="w-full h-48 object-cover rounded-xl" />
             )}
 
-            <div className="glass-card rounded-2xl p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">AI Classification</span>
-                <Badge variant="outline" className="bg-accent/10 border-accent/30 text-accent-foreground font-semibold">
-                  {aiCategory}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Department</span>
-                <span className="text-sm font-semibold text-foreground">{aiCategory ? getDepartmentForCategory(aiCategory) : ''}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">Location</span>
-                <span className="text-sm text-foreground flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> {geo.address || "Unknown"}
-                </span>
-              </div>
-              {geo.lat && geo.lng && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-muted-foreground">Coordinates</span>
-                  <span className="text-xs font-mono text-foreground">{geo.lat}, {geo.lng}</span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-muted-foreground">EXIF Check</span>
-                <Badge variant="outline" className="bg-success/10 border-success/30 text-success text-xs">
-                  ✓ Authentic
-                </Badge>
-              </div>
-            </div>
+            {classification && (
+              <ClassificationCard
+                result={classification}
+                exifTrust={exifTrust}
+                address={geo.address}
+                lat={geo.lat}
+                lng={geo.lng}
+              />
+            )}
 
+            {/* Image hash */}
+            {imageHash && (
+              <div className="glass-card rounded-xl p-3 flex items-center gap-2">
+                <Hash className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">SHA-256:</span>
+                <span className="text-xs font-mono text-foreground truncate">{imageHash}</span>
+              </div>
+            )}
+
+            {/* Low confidence warning */}
+            {classification && !classification.accepted && (
+              <LowConfidenceWarning confidence={classification.confidence} onRetake={resetFlow} />
+            )}
+
+            {/* Duplicate warning */}
             {duplicateFound && (
               <div className="glass-card rounded-2xl p-4 border-warning/30 bg-warning/5">
                 <div className="flex items-start gap-3">
@@ -260,39 +306,67 @@ export default function ReportIssue() {
             )}
 
             <Textarea
-              placeholder="Add additional context (e.g., pothole, water leak, pole fault)..."
+              placeholder="Describe the issue (e.g., pothole on main road, water leak near pipe, pole tilting with sparks)..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="min-h-[100px] bg-card"
             />
 
-            <Button variant="civic" size="lg" className="w-full" onClick={handleSubmitClick}>
-              Submit Report
+            <Button
+              variant="civic"
+              size="lg"
+              className="w-full"
+              onClick={handleSubmitClick}
+              disabled={!classification?.accepted}
+            >
+              {classification?.accepted ? 'Submit Report' : 'Confidence Too Low — Retake Photo'}
             </Button>
           </div>
         )}
 
-        {/* Confirmation Dialog */}
+        {/* ── Confirmation Dialog ──────────────────────────────────────── */}
         <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Confirm Submission</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
-              <p className="text-sm text-muted-foreground">Please verify the detected classification before submitting:</p>
+              <p className="text-sm text-muted-foreground">Verify the detected classification before submitting:</p>
               <div className="glass-card rounded-xl p-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Category</span>
-                  <span className="font-semibold text-foreground">{aiCategory}</span>
+                  <span className="font-semibold text-foreground">{classification?.category}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Department</span>
-                  <span className="font-semibold text-foreground">{aiCategory ? getDepartmentForCategory(aiCategory) : ''}</span>
+                  <span className="font-semibold text-foreground">{classification?.department}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Confidence</span>
+                  <Badge variant="outline" className="bg-success/10 border-success/30 text-success text-xs">
+                    {Math.round((classification?.confidence || 0) * 100)}%
+                  </Badge>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Location</span>
                   <span className="text-foreground">{geo.address || 'Unknown'}</span>
                 </div>
+                {imageHash && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Image Hash</span>
+                    <span className="text-xs font-mono text-foreground">{imageHash.substring(0, 12)}…</span>
+                  </div>
+                )}
+                {exifTrust && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">EXIF Trust</span>
+                    <Badge variant="outline" className={`text-xs ${
+                      exifTrust.trustLevel === 'high' ? 'text-success' : exifTrust.trustLevel === 'medium' ? 'text-warning' : 'text-destructive'
+                    }`}>
+                      {exifTrust.trustLevel.toUpperCase()}
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
             <DialogFooter>
@@ -302,7 +376,7 @@ export default function ReportIssue() {
           </DialogContent>
         </Dialog>
 
-        {/* Done */}
+        {/* ── Done ─────────────────────────────────────────────────────── */}
         {step === 'done' && (
           <div className="glass-card rounded-2xl p-8 text-center space-y-4 animate-fade-in-up">
             <div className="h-16 w-16 rounded-full gradient-accent flex items-center justify-center mx-auto">
@@ -310,12 +384,17 @@ export default function ReportIssue() {
             </div>
             <h2 className="text-xl font-bold text-foreground">Report Submitted!</h2>
             <p className="text-sm text-muted-foreground">
-              Your report has been classified as <strong>{aiCategory}</strong> and routed to <strong>{aiCategory ? getDepartmentForCategory(aiCategory) : ''}</strong>.
+              Classified as <strong>{classification?.category}</strong> and routed to <strong>{classification?.department}</strong>.
             </p>
+            {imageHash && (
+              <p className="text-xs font-mono text-muted-foreground">
+                Hash: {imageHash.substring(0, 24)}…
+              </p>
+            )}
             <p className="text-xs text-accent-foreground font-medium bg-accent/10 inline-block px-3 py-1 rounded-full">
               +10 Civic Points Earned 🎉
             </p>
-            <Button variant="navy" className="w-full" onClick={() => { setStep('upload'); setImagePreview(null); setAiCategory(null); setDescription(''); }}>
+            <Button variant="navy" className="w-full" onClick={resetFlow}>
               Report Another Issue
             </Button>
           </div>
