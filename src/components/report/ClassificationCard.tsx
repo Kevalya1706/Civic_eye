@@ -1,4 +1,4 @@
-import { MapPin, ShieldCheck, AlertTriangle } from "lucide-react";
+import { MapPin, ShieldCheck, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ClassificationResult, ExifTrust } from "@/lib/civicGuard";
 
@@ -76,6 +76,8 @@ export default function ClassificationCard({ result, exifTrust, address, lat, ln
             className={`text-xs ${
               exifTrust.trustLevel === 'high'
                 ? 'bg-success/10 border-success/30 text-success'
+                : exifTrust.trustLevel === 'fraudulent'
+                ? 'bg-destructive/10 border-destructive/30 text-destructive'
                 : exifTrust.trustLevel === 'medium'
                 ? 'bg-warning/10 border-warning/30 text-warning'
                 : 'bg-destructive/10 border-destructive/30 text-destructive'
@@ -83,13 +85,24 @@ export default function ClassificationCard({ result, exifTrust, address, lat, ln
           >
             {exifTrust.trustLevel === 'high' ? (
               <><ShieldCheck className="h-3 w-3 mr-1" /> Authentic</>
+            ) : exifTrust.trustLevel === 'fraudulent' ? (
+              <><ShieldAlert className="h-3 w-3 mr-1" /> Fraudulent/Spoofed</>
             ) : (
               <><AlertTriangle className="h-3 w-3 mr-1" /> {exifTrust.trustLevel === 'low' ? 'Low Trust' : 'Medium Trust'}</>
             )}
           </Badge>
         </div>
       )}
-      {exifTrust && exifTrust.trustLevel !== 'high' && (
+      {exifTrust && exifTrust.trustLevel === 'fraudulent' && (
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 space-y-1">
+          <p className="text-xs text-destructive font-semibold flex items-center gap-1">
+            <ShieldAlert className="h-3.5 w-3.5" /> GPS Spoofing Detected
+          </p>
+          <p className="text-xs text-destructive/80">{exifTrust.reason}</p>
+          <p className="text-xs text-muted-foreground">EXIF ↔ Live GPS offset: {exifTrust.gpsOffsetMeters}m (threshold: 50m)</p>
+        </div>
+      )}
+      {exifTrust && exifTrust.trustLevel !== 'high' && exifTrust.trustLevel !== 'fraudulent' && (
         <p className="text-xs text-warning italic">{exifTrust.reason}</p>
       )}
     </div>

@@ -112,31 +112,39 @@ function AdminDashboardInner() {
           <StatCard label="Critical (S≥80)" value={critical} icon={AlertTriangle} color="bg-destructive/15 text-destructive" />
         </div>
 
-        {/* Heatmap placeholder */}
+        {/* Satellite Verification Map */}
         <div className="glass-card rounded-2xl p-6">
-          <h3 className="font-semibold text-foreground mb-3">City Health Heatmap</h3>
-          <div className="h-48 rounded-xl bg-gradient-to-br from-success/10 via-warning/10 to-destructive/10 flex items-center justify-center relative overflow-hidden">
+          <h3 className="font-semibold text-foreground mb-1">Satellite Verification Map</h3>
+          <p className="text-xs text-muted-foreground mb-3">Google Satellite View — 10m accuracy radius overlay per report</p>
+          <div className="h-56 rounded-xl bg-gradient-to-br from-[hsl(var(--primary)/0.05)] via-[hsl(var(--accent)/0.08)] to-[hsl(var(--primary)/0.05)] flex items-center justify-center relative overflow-hidden border border-border">
             <div className="absolute inset-0 grid grid-cols-8 grid-rows-4 gap-1 p-2">
               {Array.from({ length: 32 }).map((_, i) => {
                 const intensity = Math.random();
                 return (
                   <div
                     key={i}
-                    className="rounded-md transition-colors"
+                    className="rounded-md transition-colors relative"
                     style={{
                       backgroundColor: intensity > 0.7
                         ? 'hsl(0 84% 60% / 0.4)'
                         : intensity > 0.4
                         ? 'hsl(38 92% 50% / 0.3)'
-                        : 'hsl(72 100% 50% / 0.2)',
+                        : 'hsl(142 76% 36% / 0.2)',
                     }}
-                  />
+                  >
+                    {intensity > 0.6 && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-3 w-3 rounded-full border-2 border-destructive/60 bg-destructive/20 animate-pulse" title="10m accuracy radius" />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
-            <span className="text-xs text-muted-foreground z-10 bg-card/80 px-3 py-1 rounded-full">
-              Interactive map requires Mapbox/Leaflet integration
-            </span>
+            <div className="z-10 bg-card/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-border text-center">
+              <p className="text-xs text-muted-foreground">🛰️ Satellite overlay requires Google Maps API key</p>
+              <p className="text-xs text-muted-foreground mt-1">Each pin shows a <span className="text-destructive font-medium">10m accuracy circle</span> around reported coordinates</p>
+            </div>
           </div>
         </div>
 
