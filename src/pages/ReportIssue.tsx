@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle, LocateFixed, Hash } from "lucide-react";
+import { Camera, MapPin, Upload, Loader2, CheckCircle, AlertTriangle, LocateFixed, Hash, ShieldAlert, Satellite } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -195,23 +195,27 @@ export default function ReportIssue() {
               <Camera className="h-10 w-10 text-accent-foreground" />
             </div>
             <p className="text-sm text-muted-foreground">Take a photo or upload an image of the issue</p>
-            <label className="cursor-pointer">
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-              <Button variant="civic" size="lg" className="w-full" asChild>
-                <span><Upload className="h-5 w-5 mr-2" /> Capture / Upload Photo</span>
-              </Button>
-            </label>
 
-            {/* GPS Info */}
+            {/* GPS Lock Status */}
             <div className="space-y-2">
               {geo.loading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Acquiring high-precision GPS...
+                  <Loader2 className="h-3 w-3 animate-spin" /> Acquiring high-precision satellite lock...
                 </div>
               ) : geo.lat && geo.lng ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                  <MapPin className="h-3 w-3" />
-                  <span>GPS: {geo.lat}° N, {geo.lng}° E — {geo.address}</span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs justify-center">
+                    <Satellite className="h-3 w-3" />
+                    <span className={geo.locked ? 'text-success font-medium' : 'text-warning'}>
+                      {geo.locked
+                        ? `🛰️ Satellite Lock — Accuracy: ${geo.accuracy}m`
+                        : `⚠️ Low Accuracy: ${geo.accuracy}m (need ≤10m)`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                    <MapPin className="h-3 w-3" />
+                    <span>GPS: {geo.lat}° N, {geo.lng}° E — {geo.address}</span>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -226,12 +230,28 @@ export default function ReportIssue() {
                   </div>
                 </div>
               )}
-              {!geo.loading && geo.lat && (
+              {!geo.loading && geo.lat && !geo.locked && (
+                <Button variant="ghost" size="sm" className="text-xs h-7 text-warning" onClick={geo.requestLocation}>
+                  <LocateFixed className="h-3 w-3 mr-1" /> Retry for better accuracy
+                </Button>
+              )}
+              {!geo.loading && geo.lat && geo.locked && (
                 <Button variant="ghost" size="sm" className="text-xs h-7" onClick={geo.requestLocation}>
                   <LocateFixed className="h-3 w-3 mr-1" /> Re-fetch GPS
                 </Button>
               )}
             </div>
+
+            {/* Upload — disabled until GPS lock */}
+            <label className={`cursor-pointer ${!geo.locked ? 'opacity-50 pointer-events-none' : ''}`}>
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} disabled={!geo.locked} />
+              <Button variant="civic" size="lg" className="w-full" asChild disabled={!geo.locked}>
+                <span><Upload className="h-5 w-5 mr-2" /> Capture / Upload Photo</span>
+              </Button>
+            </label>
+            {!geo.locked && geo.lat && (
+              <p className="text-xs text-warning">📡 Waiting for high-precision GPS lock (≤10m) before enabling upload...</p>
+            )}
           </div>
         )}
 
@@ -363,8 +383,16 @@ export default function ReportIssue() {
                     <Badge variant="outline" className={`text-xs ${
                       exifTrust.trustLevel === 'high' ? 'text-success' : exifTrust.trustLevel === 'medium' ? 'text-warning' : 'text-destructive'
                     }`}>
-                      {exifTrust.trustLevel.toUpperCase()}
+                      {exifTrust.trustLevel === 'fraudulent' ? '🚨 FRAUDULENT' : exifTrust.trustLevel.toUpperCase()}
                     </Badge>
+                  </div>
+                )}
+                {exifTrust && exifTrust.trustLevel === 'fraudulent' && (
+                  <div className="mt-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-xs text-destructive font-medium flex items-center gap-1">
+                      <ShieldAlert className="h-3 w-3" /> {exifTrust.reason}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">GPS offset: {exifTrust.gpsOffsetMeters}m from live location</p>
                   </div>
                 )}
               </div>
