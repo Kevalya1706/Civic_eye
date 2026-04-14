@@ -201,12 +201,12 @@ export default function ReportIssue() {
 
             {/* GPS Lock Status — Traffic Light */}
             <div className="space-y-2">
-              {geo.loading ? (
+            {geo.loading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                   <Loader2 className="h-3 w-3 animate-spin" /> Acquiring satellite signal...
                 </div>
               ) : geo.lat && geo.lng ? (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <div className="flex items-center gap-2 text-xs justify-center">
                     <Satellite className="h-3 w-3" />
                     {geo.precisionTier === "high" && (
@@ -223,10 +223,48 @@ export default function ReportIssue() {
                       <span className="text-muted-foreground">⚪ Waiting for Signal ({geo.accuracy}m &gt;20m)...</span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                    <MapPin className="h-3 w-3" />
-                    <span>GPS: {geo.lat}° N, {geo.lng}° E — {geo.address}</span>
+
+                  {/* Live Address Badge — progressively narrows as GPS stabilizes */}
+                  <div className="glass-card rounded-lg p-2.5 text-left space-y-1 border border-border/50">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5 text-accent flex-shrink-0" />
+                      <span className="text-xs font-semibold text-foreground truncate">
+                        {geo.parsedAddress.fullPrecise || geo.address}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 text-[10px]">
+                      {geo.parsedAddress.premise && (
+                        <Badge variant="outline" className="text-[10px] h-4 bg-accent/10 border-accent/20">
+                          🏠 {geo.parsedAddress.premise}
+                        </Badge>
+                      )}
+                      {geo.parsedAddress.sublocality2 && (
+                        <Badge variant="outline" className="text-[10px] h-4 bg-primary/10 border-primary/20">
+                          📍 {geo.parsedAddress.sublocality2}
+                        </Badge>
+                      )}
+                      {geo.parsedAddress.neighborhood && (
+                        <Badge variant="outline" className="text-[10px] h-4 bg-info/10 border-info/20">
+                          🏘️ {geo.parsedAddress.neighborhood}
+                        </Badge>
+                      )}
+                      {geo.parsedAddress.city && (
+                        <Badge variant="outline" className="text-[10px] h-4">
+                          🌆 {geo.parsedAddress.city}
+                        </Badge>
+                      )}
+                    </div>
+                    {geo.parsedAddress.plusCode && (
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
+                        <span>📌 Plus Code:</span>
+                        <span className="font-semibold text-foreground">{geo.parsedAddress.plusCode}</span>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground">
+                      GPS: {geo.lat}° N, {geo.lng}° E
+                    </div>
                   </div>
+
                   {geo.precisionTier === "standard" && !geo.locked && (
                     <div className="w-full max-w-[200px] mx-auto h-1.5 rounded-full bg-muted overflow-hidden">
                       <div
