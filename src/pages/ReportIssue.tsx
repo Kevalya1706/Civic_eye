@@ -365,6 +365,8 @@ export default function ReportIssue() {
                 address={geo.address}
                 lat={geo.lat}
                 lng={geo.lng}
+                plusCode={geo.parsedAddress.plusCode}
+                parsedAddress={geo.parsedAddress}
               />
             )}
 
