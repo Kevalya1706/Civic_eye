@@ -142,9 +142,12 @@ export default function ReportIssue() {
   const handleConfirmSubmit = () => {
     setConfirmOpen(false);
     setStep('done');
+    // Metadata tagging: precision_tier for Supabase entry
+    const precisionTier = geo.precisionTier;
+    console.log('[CivicEye] Ticket metadata:', { precision_tier: precisionTier, accuracy: geo.accuracy });
     toast({
       title: "Issue Reported! 🎉",
-      description: `Routed to ${classification?.department}. You earned +10 Civic Points.`,
+      description: `Routed to ${classification?.department}. Precision: ${precisionTier}. You earned +10 Civic Points.`,
     });
   };
 
