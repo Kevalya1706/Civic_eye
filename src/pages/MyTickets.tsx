@@ -10,6 +10,14 @@ export default function MyTickets() {
   const user = mockUsers[0];
   const userTickets = mockTickets.filter(t => t.userId === user.id);
 
+  // Dynamic stats computed from ticket data
+  const totalReported = userTickets.length;
+  const totalVerified = userTickets.filter(t => t.status === 'Resolved').length;
+  const trustScore = totalReported > 0 ? Math.round((totalVerified / totalReported) * 100) : 0;
+  const civicPoints = 100 + (totalVerified * 50); // Base 100 + 50 per verified
+  const isTrusted = totalVerified >= 5 && trustScore > 90;
+  const badgeLabel = isTrusted ? "Trusted Reporter" : totalVerified >= 1 ? "Active Reporter" : "New Contributor";
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -22,12 +30,12 @@ export default function MyTickets() {
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-bold text-foreground">{displayName}</h2>
-              <Badge variant="outline" className="bg-accent/10 border-accent/20 text-accent-foreground text-xs mt-1">
-                Trusted Reporter
+              <Badge variant="outline" className={`text-xs mt-1 ${isTrusted ? 'bg-accent/10 border-accent/20 text-accent-foreground' : 'bg-muted border-border text-muted-foreground'}`}>
+                {badgeLabel}
               </Badge>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-extrabold text-gradient-navy">100</p>
+              <p className="text-2xl font-extrabold text-gradient-navy">{civicPoints}</p>
               <p className="text-xs text-muted-foreground">Civic Points</p>
             </div>
           </div>
@@ -36,21 +44,21 @@ export default function MyTickets() {
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Ticket className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">{userTickets.length}</p>
+              <p className="text-lg font-bold text-foreground">{totalReported}</p>
               <p className="text-xs text-muted-foreground">Reported</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Star className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">85%</p>
+              <p className="text-lg font-bold text-foreground">{trustScore}%</p>
               <p className="text-xs text-muted-foreground">Trust Score</p>
             </div>
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
                 <Trophy className="h-3.5 w-3.5" />
               </div>
-              <p className="text-lg font-bold text-foreground">{userTickets.filter(t => t.status === 'Resolved').length}</p>
+              <p className="text-lg font-bold text-foreground">{totalVerified}</p>
               <p className="text-xs text-muted-foreground">Verified</p>
             </div>
           </div>
