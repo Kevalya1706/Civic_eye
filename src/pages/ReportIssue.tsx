@@ -196,26 +196,42 @@ export default function ReportIssue() {
             </div>
             <p className="text-sm text-muted-foreground">Take a photo or upload an image of the issue</p>
 
-            {/* GPS Lock Status */}
+            {/* GPS Lock Status — Traffic Light */}
             <div className="space-y-2">
               {geo.loading ? (
                 <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
-                  <Loader2 className="h-3 w-3 animate-spin" /> Acquiring high-precision satellite lock...
+                  <Loader2 className="h-3 w-3 animate-spin" /> Acquiring satellite signal...
                 </div>
               ) : geo.lat && geo.lng ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-xs justify-center">
                     <Satellite className="h-3 w-3" />
-                    <span className={geo.locked ? 'text-success font-medium' : 'text-warning'}>
-                      {geo.locked
-                        ? `🛰️ Satellite Lock — Accuracy: ${geo.accuracy}m`
-                        : `⚠️ Low Accuracy: ${geo.accuracy}m (need ≤10m)`}
-                    </span>
+                    {geo.precisionTier === "high" && (
+                      <span className="text-[hsl(var(--accent))] font-semibold">🟢 High Precision Lock — Accuracy: {geo.accuracy}m</span>
+                    )}
+                    {geo.precisionTier === "standard" && (
+                      <span className="font-semibold" style={{ color: '#FFD700' }}>
+                        🟡 Standard Precision — Accuracy: {geo.accuracy}m
+                        {!geo.locked && ` (stable ${geo.stableSeconds}s/5s)`}
+                        {geo.locked && ' ✓ Stable'}
+                      </span>
+                    )}
+                    {geo.precisionTier === "low" && (
+                      <span className="text-muted-foreground">⚪ Waiting for Signal ({geo.accuracy}m &gt;20m)...</span>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
                     <MapPin className="h-3 w-3" />
                     <span>GPS: {geo.lat}° N, {geo.lng}° E — {geo.address}</span>
                   </div>
+                  {geo.precisionTier === "standard" && !geo.locked && (
+                    <div className="w-full max-w-[200px] mx-auto h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${Math.min(100, (geo.stableSeconds / 5) * 100)}%`, backgroundColor: '#FFD700' }}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -231,8 +247,8 @@ export default function ReportIssue() {
                 </div>
               )}
               {!geo.loading && geo.lat && !geo.locked && (
-                <Button variant="ghost" size="sm" className="text-xs h-7 text-warning" onClick={geo.requestLocation}>
-                  <LocateFixed className="h-3 w-3 mr-1" /> Retry for better accuracy
+                <Button variant="ghost" size="sm" className="text-xs h-7 text-muted-foreground" onClick={geo.requestLocation}>
+                  <LocateFixed className="h-3 w-3 mr-1" /> Retry for better signal
                 </Button>
               )}
               {!geo.loading && geo.lat && geo.locked && (
@@ -242,12 +258,26 @@ export default function ReportIssue() {
               )}
             </div>
 
-            {/* Upload — disabled until GPS lock */}
-            <label className={`cursor-pointer ${!geo.locked ? 'opacity-50 pointer-events-none' : ''}`}>
-              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} disabled={!geo.locked} />
-              <Button variant="civic" size="lg" className="w-full" asChild disabled={!geo.locked}>
-                <span><Upload className="h-5 w-5 mr-2" /> Capture / Upload Photo</span>
-              </Button>
+            {/* Upload — Traffic Light Button */}
+            {(() => {
+              const canUpload = geo.locked;
+              const tier = geo.precisionTier;
+              const btnStyle = tier === "high"
+                ? { backgroundColor: '#C1FF00', color: '#1A2B6D' }
+                : tier === "standard" && canUpload
+                  ? { backgroundColor: '#FFD700', color: '#1A2B6D' }
+                  : {};
+              const label = tier === "high"
+                ? "High Precision Lock"
+                : tier === "standard" && canUpload
+                  ? "Standard Precision"
+                  : "Waiting for Signal (>20m)...";
+              return (
+                <label className={`cursor-pointer ${!canUpload ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} disabled={!canUpload} />
+                  <Button size="lg" className="w-full font-semibold shadow-lg" style={canUpload ? btnStyle : {}} asChild disabled={!canUpload}>
+                    <span><Upload className="h-5 w-5 mr-2" /> {canUpload ? 'Capture / Upload Photo' : label}</span>
+                  </Button>
             </label>
             {!geo.locked && geo.lat && (
               <p className="text-xs text-warning">📡 Waiting for high-precision GPS lock (≤10m) before enabling upload...</p>
