@@ -8,9 +8,11 @@ interface ClassificationCardProps {
   address: string;
   lat: number | null;
   lng: number | null;
+  plusCode?: string;
+  parsedAddress?: { premise: string; sublocality2: string; neighborhood: string; city: string; fullPrecise: string };
 }
 
-export default function ClassificationCard({ result, exifTrust, address, lat, lng }: ClassificationCardProps) {
+export default function ClassificationCard({ result, exifTrust, address, lat, lng, plusCode, parsedAddress }: ClassificationCardProps) {
   const confidencePct = Math.round(result.confidence * 100);
 
   return (
@@ -53,19 +55,46 @@ export default function ClassificationCard({ result, exifTrust, address, lat, ln
         <span className="text-sm font-semibold text-foreground">{result.department || '—'}</span>
       </div>
 
-      {/* Location */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">Location</span>
-        <span className="text-sm text-foreground flex items-center gap-1">
-          <MapPin className="h-3 w-3" /> {address || "Unknown"}
-        </span>
-      </div>
-      {lat && lng && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Coordinates</span>
-          <span className="text-xs font-mono text-foreground">{lat}, {lng}</span>
+      {/* Location — Civic Descriptor */}
+      <div className="space-y-1.5 pt-1 border-t border-border/30">
+        <div className="flex items-start justify-between">
+          <span className="text-sm font-medium text-muted-foreground">Civic Address</span>
+          <span className="text-sm text-foreground text-right max-w-[60%] flex items-start gap-1">
+            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span>{parsedAddress?.fullPrecise || address || "Unknown"}</span>
+          </span>
         </div>
-      )}
+        {parsedAddress?.premise && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Premise/Gut No.</span>
+            <span className="text-xs font-semibold text-foreground">{parsedAddress.premise}</span>
+          </div>
+        )}
+        {parsedAddress?.sublocality2 && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Lane/Road</span>
+            <span className="text-xs text-foreground">{parsedAddress.sublocality2}</span>
+          </div>
+        )}
+        {parsedAddress?.neighborhood && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Neighborhood</span>
+            <span className="text-xs text-foreground">{parsedAddress.neighborhood}</span>
+          </div>
+        )}
+        {plusCode && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Plus Code</span>
+            <span className="text-xs font-mono font-semibold text-accent-foreground bg-accent/10 px-1.5 py-0.5 rounded">{plusCode}</span>
+          </div>
+        )}
+        {lat && lng && (
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Coordinates</span>
+            <span className="text-xs font-mono text-foreground">{lat}, {lng}</span>
+          </div>
+        )}
+      </div>
 
       {/* EXIF Trust */}
       {exifTrust && (
