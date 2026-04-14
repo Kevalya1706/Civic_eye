@@ -278,9 +278,11 @@ export default function ReportIssue() {
                   <Button size="lg" className="w-full font-semibold shadow-lg" style={canUpload ? btnStyle : {}} asChild disabled={!canUpload}>
                     <span><Upload className="h-5 w-5 mr-2" /> {canUpload ? 'Capture / Upload Photo' : label}</span>
                   </Button>
-            </label>
+                </label>
+              );
+            })()}
             {!geo.locked && geo.lat && (
-              <p className="text-xs text-warning">📡 Waiting for high-precision GPS lock (≤10m) before enabling upload...</p>
+              <p className="text-xs text-muted-foreground">📡 Stabilizing GPS signal before enabling upload...</p>
             )}
           </div>
         )}
