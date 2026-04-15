@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { Filter, CheckCircle, Upload, Eye, BarChart3, AlertTriangle } from "lucide-react";
+import { Filter, CheckCircle, Upload, Eye, BarChart3, AlertTriangle, Loader2 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import TicketCard from "@/components/TicketCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { mockTickets, DEPARTMENTS, type Department, type Ticket } from "@/lib/mockData";
+import { DEPARTMENTS, type Department } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
 import AdminGuard from "@/components/AdminGuard";
 import AppFooter from "@/components/AppFooter";
+import { useAllTickets, useUpdateTicket, type TicketRow } from "@/hooks/useTickets";
 
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
   return (
@@ -26,7 +27,7 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
   );
 }
 
-function VerifyDialog({ ticket, onVerify }: { ticket: Ticket; onVerify: (id: string) => void }) {
+function VerifyDialog({ ticket, onVerify }: { ticket: TicketRow; onVerify: (id: string) => void }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -72,28 +73,29 @@ function VerifyDialog({ ticket, onVerify }: { ticket: Ticket; onVerify: (id: str
 
 function AdminDashboardInner() {
   const { toast } = useToast();
-  const [tickets, setTickets] = useState(mockTickets);
+  const { data: tickets = [], isLoading } = useAllTickets();
+  const updateTicket = useUpdateTicket();
   const [deptFilter, setDeptFilter] = useState<Department | 'All'>('All');
 
   const filtered = (deptFilter === 'All' ? tickets : tickets.filter(t => t.department === deptFilter))
-    .sort((a, b) => b.priorityScore - a.priorityScore);
+    .sort((a, b) => b.priority_score - a.priority_score);
 
   const open = tickets.filter(t => t.status === 'Open').length;
   const inProgress = tickets.filter(t => t.status === 'In Progress').length;
   const resolved = tickets.filter(t => t.status === 'Resolved').length;
-  const critical = tickets.filter(t => t.priorityScore >= 80).length;
+  const critical = tickets.filter(t => t.priority_score >= 80).length;
 
   const handleResolve = (id: string) => {
-    setTickets(prev => prev.map(t =>
-      t.id === id ? { ...t, status: 'Resolved' as const, resolvedAt: new Date().toISOString() } : t
-    ));
-    toast({ title: "Ticket Resolved ✓", description: "Citizen has been notified." });
+    updateTicket.mutate(
+      { id, status: 'Resolved', resolved_at: new Date().toISOString() },
+      { onSuccess: () => toast({ title: "Ticket Resolved ✓", description: "Citizen has been notified." }) }
+    );
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AppHeader />
-      <div className="container py-8 space-y-6">
+      <div className="container py-8 space-y-6 flex-1">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gradient-navy">Command Center</h1>
@@ -104,7 +106,6 @@ function AdminDashboardInner() {
           </Badge>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Open" value={open} icon={AlertTriangle} color="bg-warning/15 text-warning" />
           <StatCard label="In Progress" value={inProgress} icon={Eye} color="bg-info/15 text-info" />
@@ -121,17 +122,8 @@ function AdminDashboardInner() {
               {Array.from({ length: 32 }).map((_, i) => {
                 const intensity = Math.random();
                 return (
-                  <div
-                    key={i}
-                    className="rounded-md transition-colors relative"
-                    style={{
-                      backgroundColor: intensity > 0.7
-                        ? 'hsl(0 84% 60% / 0.4)'
-                        : intensity > 0.4
-                        ? 'hsl(38 92% 50% / 0.3)'
-                        : 'hsl(142 76% 36% / 0.2)',
-                    }}
-                  >
+                  <div key={i} className="rounded-md transition-colors relative"
+                    style={{ backgroundColor: intensity > 0.7 ? 'hsl(0 84% 60% / 0.4)' : intensity > 0.4 ? 'hsl(38 92% 50% / 0.3)' : 'hsl(142 76% 36% / 0.2)' }}>
                     {intensity > 0.6 && (
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="h-3 w-3 rounded-full border-2 border-destructive/60 bg-destructive/20 animate-pulse" title="10m accuracy radius" />
@@ -143,37 +135,40 @@ function AdminDashboardInner() {
             </div>
             <div className="z-10 bg-card/90 backdrop-blur-sm px-4 py-2 rounded-lg border border-border text-center">
               <p className="text-xs text-muted-foreground">🛰️ Satellite overlay requires Google Maps API key</p>
-              <p className="text-xs text-muted-foreground mt-1">Each pin shows a <span className="text-destructive font-medium">10m accuracy circle</span> around reported coordinates</p>
+              <p className="text-xs text-muted-foreground mt-1">Each pin shows a <span className="text-destructive font-medium">10m accuracy circle</span></p>
             </div>
           </div>
         </div>
 
-        {/* Department Filter */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
           <Filter className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-          <Button variant={deptFilter === 'All' ? 'secondary' : 'ghost'} size="sm" className="text-xs" onClick={() => setDeptFilter('All')}>
-            All Departments
-          </Button>
+          <Button variant={deptFilter === 'All' ? 'secondary' : 'ghost'} size="sm" className="text-xs" onClick={() => setDeptFilter('All')}>All Departments</Button>
           {DEPARTMENTS.map(d => (
-            <Button key={d} variant={deptFilter === d ? 'secondary' : 'ghost'} size="sm" className="text-xs whitespace-nowrap" onClick={() => setDeptFilter(d)}>
-              {d}
-            </Button>
+            <Button key={d} variant={deptFilter === d ? 'secondary' : 'ghost'} size="sm" className="text-xs whitespace-nowrap" onClick={() => setDeptFilter(d)}>{d}</Button>
           ))}
         </div>
 
-        {/* Ticket Queue */}
-        <div className="space-y-4">
-          {filtered.map(ticket => (
-            <div key={ticket.id} className="relative">
-              <TicketCard ticket={ticket} />
-              {ticket.status !== 'Resolved' && (
-                <div className="absolute top-4 right-20">
-                  <VerifyDialog ticket={ticket} onVerify={handleResolve} />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="text-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-accent" />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map(ticket => (
+              <div key={ticket.id} className="relative">
+                <TicketCard ticket={ticket} />
+                {ticket.status !== 'Resolved' && (
+                  <div className="absolute top-4 right-20">
+                    <VerifyDialog ticket={ticket} onVerify={handleResolve} />
+                  </div>
+                )}
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-center text-muted-foreground py-8">No tickets in queue.</p>
+            )}
+          </div>
+        )}
       </div>
       <AppFooter />
     </div>
