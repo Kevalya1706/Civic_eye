@@ -14,7 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      department_scores: {
+        Row: {
+          avg_resolution_hours: number | null
+          department: Database["public"]["Enums"]["department_type"]
+          efficiency_score: number
+          id: string
+          resolved_tickets: number
+          total_tickets: number
+          updated_at: string
+        }
+        Insert: {
+          avg_resolution_hours?: number | null
+          department: Database["public"]["Enums"]["department_type"]
+          efficiency_score?: number
+          id?: string
+          resolved_tickets?: number
+          total_tickets?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_resolution_hours?: number | null
+          department?: Database["public"]["Enums"]["department_type"]
+          efficiency_score?: number
+          id?: string
+          resolved_tickets?: number
+          total_tickets?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          badge: string
+          civic_points: number
+          created_at: string
+          display_name: string
+          email: string | null
+          id: string
+          total_reported: number
+          total_verified: number
+          trust_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          badge?: string
+          civic_points?: number
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          total_reported?: number
+          total_verified?: number
+          trust_score?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          badge?: string
+          civic_points?: number
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          id?: string
+          total_reported?: number
+          total_verified?: number
+          trust_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tickets: {
+        Row: {
+          address: string
+          admin_reviewed_at: string | null
+          category: Database["public"]["Enums"]["ticket_category"]
+          city: string | null
+          created_at: string
+          crew_dispatched_at: string | null
+          department: Database["public"]["Enums"]["department_type"]
+          description: string
+          fixed_photo_url: string | null
+          full_precise_address: string | null
+          id: string
+          image_hash: string | null
+          last_nudged_at: string | null
+          lat: number
+          lng: number
+          near_school_or_hospital: boolean
+          neighborhood: string | null
+          nudge_count: number
+          photo_url: string | null
+          precision_tier: Database["public"]["Enums"]["precision_tier"] | null
+          priority_score: number
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+          upvotes: number
+          user_id: string
+          user_name: string
+          user_trust_score: number
+        }
+        Insert: {
+          address?: string
+          admin_reviewed_at?: string | null
+          category: Database["public"]["Enums"]["ticket_category"]
+          city?: string | null
+          created_at?: string
+          crew_dispatched_at?: string | null
+          department: Database["public"]["Enums"]["department_type"]
+          description?: string
+          fixed_photo_url?: string | null
+          full_precise_address?: string | null
+          id?: string
+          image_hash?: string | null
+          last_nudged_at?: string | null
+          lat: number
+          lng: number
+          near_school_or_hospital?: boolean
+          neighborhood?: string | null
+          nudge_count?: number
+          photo_url?: string | null
+          precision_tier?: Database["public"]["Enums"]["precision_tier"] | null
+          priority_score?: number
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          upvotes?: number
+          user_id: string
+          user_name?: string
+          user_trust_score?: number
+        }
+        Update: {
+          address?: string
+          admin_reviewed_at?: string | null
+          category?: Database["public"]["Enums"]["ticket_category"]
+          city?: string | null
+          created_at?: string
+          crew_dispatched_at?: string | null
+          department?: Database["public"]["Enums"]["department_type"]
+          description?: string
+          fixed_photo_url?: string | null
+          full_precise_address?: string | null
+          id?: string
+          image_hash?: string | null
+          last_nudged_at?: string | null
+          lat?: number
+          lng?: number
+          near_school_or_hospital?: boolean
+          neighborhood?: string | null
+          nudge_count?: number
+          photo_url?: string | null
+          precision_tier?: Database["public"]["Enums"]["precision_tier"] | null
+          priority_score?: number
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+          upvotes?: number
+          user_id?: string
+          user_name?: string
+          user_trust_score?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +184,21 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      department_type:
+        | "Road Dept"
+        | "Electricity"
+        | "Water & Sewage"
+        | "Waste Management"
+        | "Drainage"
+      precision_tier: "high" | "standard" | "low"
+      ticket_category:
+        | "Pothole"
+        | "Pole Fault"
+        | "Water Leak"
+        | "Waste Overflow"
+        | "Drainage Block"
+        | "Road Damage"
+      ticket_status: "Open" | "In Progress" | "Resolved" | "Suspicious"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +325,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      department_type: [
+        "Road Dept",
+        "Electricity",
+        "Water & Sewage",
+        "Waste Management",
+        "Drainage",
+      ],
+      precision_tier: ["high", "standard", "low"],
+      ticket_category: [
+        "Pothole",
+        "Pole Fault",
+        "Water Leak",
+        "Waste Overflow",
+        "Drainage Block",
+        "Road Damage",
+      ],
+      ticket_status: ["Open", "In Progress", "Resolved", "Suspicious"],
+    },
   },
 } as const
