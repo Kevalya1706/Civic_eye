@@ -2,7 +2,7 @@ import { Eye, Menu, X, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 
 const navItems = [
   { label: "Home", path: "/" },
@@ -16,7 +16,7 @@ const navItems = [
 export default function AppHeader() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isLoggedIn, displayName, logout } = useAuth();
+  const { isLoggedIn, displayName, logout } = useSupabaseAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
@@ -37,11 +37,7 @@ export default function AppHeader() {
         <nav className="hidden md:flex items-center gap-1">
           {navItems.map((item) => (
             <Link key={item.path} to={item.path}>
-              <Button
-                variant={location.pathname === item.path ? "secondary" : "ghost"}
-                size="sm"
-                className="text-sm"
-              >
+              <Button variant={location.pathname === item.path ? "secondary" : "ghost"} size="sm" className="text-sm">
                 {item.label}
               </Button>
             </Link>
@@ -65,10 +61,7 @@ export default function AppHeader() {
         <div className="md:hidden border-t border-border bg-card p-4 space-y-1 animate-fade-in-up">
           {navItems.map((item) => (
             <Link key={item.path} to={item.path} onClick={() => setMobileOpen(false)}>
-              <Button
-                variant={location.pathname === item.path ? "secondary" : "ghost"}
-                className="w-full justify-start"
-              >
+              <Button variant={location.pathname === item.path ? "secondary" : "ghost"} className="w-full justify-start">
                 {item.label}
               </Button>
             </Link>

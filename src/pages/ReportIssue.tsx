@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
-import { getDepartmentForCategory } from "@/lib/mockData";
+import { getDepartmentForCategory, calculatePriorityScore } from "@/lib/mockData";
 import {
   classifyIssue,
   validateScene,
@@ -19,6 +19,9 @@ import {
 } from "@/lib/civicGuard";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useCreateTicket } from "@/hooks/useTickets";
+import { useNavigate } from "react-router-dom";
 import SceneRejection from "@/components/report/SceneRejection";
 import ClassificationCard from "@/components/report/ClassificationCard";
 import LowConfidenceWarning from "@/components/report/LowConfidenceWarning";
@@ -28,6 +31,9 @@ type Step = 'upload' | 'validating' | 'classify' | 'details' | 'confirm' | 'done
 export default function ReportIssue() {
   const { toast } = useToast();
   const geo = useGeolocation();
+  const { userId, displayName } = useSupabaseAuth();
+  const createTicket = useCreateTicket();
+  const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>('upload');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -139,16 +145,44 @@ export default function ReportIssue() {
     setConfirmOpen(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setConfirmOpen(false);
-    setStep('done');
-    // Metadata tagging: precision_tier for Supabase entry
-    const precisionTier = geo.precisionTier;
-    console.log('[CivicEye] Ticket metadata:', { precision_tier: precisionTier, accuracy: geo.accuracy });
-    toast({
-      title: "Issue Reported! 🎉",
-      description: `Routed to ${classification?.department}. Precision: ${precisionTier}. You earned +10 Civic Points.`,
+    if (!classification?.category || !userId) return;
+
+    const priorityScore = calculatePriorityScore({
+      nearSchoolOrHospital: false,
+      upvotes: 0,
+      createdAt: new Date().toISOString(),
     });
+
+    try {
+      await createTicket.mutateAsync({
+        user_id: userId,
+        user_name: displayName,
+        category: classification.category as any,
+        department: classification.department as any,
+        lat: geo.lat || 0,
+        lng: geo.lng || 0,
+        address: geo.address || 'Unknown',
+        city: geo.parsedAddress.city || null,
+        neighborhood: geo.parsedAddress.neighborhood || null,
+        full_precise_address: geo.parsedAddress.fullPrecise || geo.address || null,
+        description,
+        priority_score: priorityScore,
+        precision_tier: geo.precisionTier as any,
+        image_hash: imageHash || null,
+        near_school_or_hospital: false,
+        user_trust_score: 0,
+      });
+
+      setStep('done');
+      toast({
+        title: "Issue Reported! 🎉",
+        description: `Routed to ${classification.department}. You earned +10 Civic Points.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to submit ticket.", variant: "destructive" });
+    }
   };
 
   const stepIndex = ['upload', 'validating', 'classify', 'details', 'done'].indexOf(
