@@ -31,6 +31,9 @@ type Step = 'upload' | 'validating' | 'classify' | 'details' | 'confirm' | 'done
 export default function ReportIssue() {
   const { toast } = useToast();
   const geo = useGeolocation();
+  const { userId, displayName } = useSupabaseAuth();
+  const createTicket = useCreateTicket();
+  const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>('upload');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
