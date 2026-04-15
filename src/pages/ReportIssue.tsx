@@ -145,16 +145,44 @@ export default function ReportIssue() {
     setConfirmOpen(true);
   };
 
-  const handleConfirmSubmit = () => {
+  const handleConfirmSubmit = async () => {
     setConfirmOpen(false);
-    setStep('done');
-    // Metadata tagging: precision_tier for Supabase entry
-    const precisionTier = geo.precisionTier;
-    console.log('[CivicEye] Ticket metadata:', { precision_tier: precisionTier, accuracy: geo.accuracy });
-    toast({
-      title: "Issue Reported! 🎉",
-      description: `Routed to ${classification?.department}. Precision: ${precisionTier}. You earned +10 Civic Points.`,
+    if (!classification?.category || !userId) return;
+
+    const priorityScore = calculatePriorityScore({
+      nearSchoolOrHospital: false,
+      upvotes: 0,
+      createdAt: new Date().toISOString(),
     });
+
+    try {
+      await createTicket.mutateAsync({
+        user_id: userId,
+        user_name: displayName,
+        category: classification.category as any,
+        department: classification.department as any,
+        lat: geo.lat || 0,
+        lng: geo.lng || 0,
+        address: geo.address || 'Unknown',
+        city: geo.parsedAddress.city || null,
+        neighborhood: geo.parsedAddress.neighborhood || null,
+        full_precise_address: geo.parsedAddress.fullPrecise || geo.address || null,
+        description,
+        priority_score: priorityScore,
+        precision_tier: geo.precisionTier as any,
+        image_hash: imageHash || null,
+        near_school_or_hospital: false,
+        user_trust_score: 0,
+      });
+
+      setStep('done');
+      toast({
+        title: "Issue Reported! 🎉",
+        description: `Routed to ${classification.department}. You earned +10 Civic Points.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to submit ticket.", variant: "destructive" });
+    }
   };
 
   const stepIndex = ['upload', 'validating', 'classify', 'details', 'done'].indexOf(
