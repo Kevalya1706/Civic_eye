@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
-import { getDepartmentForCategory } from "@/lib/mockData";
+import { getDepartmentForCategory, calculatePriorityScore } from "@/lib/mockData";
 import {
   classifyIssue,
   validateScene,
@@ -19,6 +19,9 @@ import {
 } from "@/lib/civicGuard";
 import { useToast } from "@/hooks/use-toast";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { useCreateTicket } from "@/hooks/useTickets";
+import { useNavigate } from "react-router-dom";
 import SceneRejection from "@/components/report/SceneRejection";
 import ClassificationCard from "@/components/report/ClassificationCard";
 import LowConfidenceWarning from "@/components/report/LowConfidenceWarning";
