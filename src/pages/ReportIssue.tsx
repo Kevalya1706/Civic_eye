@@ -375,12 +375,12 @@ export default function ReportIssue() {
             )}
             <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
             <p className="text-sm font-medium text-foreground">
-              {step === 'validating' ? 'Running CivicGuard Pre-Processor...' : 'Triple-Pass Classification Engine...'}
+              {step === 'validating' ? 'Running CivicGuard Pre-Processor...' : 'Gemini Vision Analyzing Image...'}
             </p>
             <p className="text-xs text-muted-foreground">
               {step === 'validating'
                 ? 'SHA-256 hashing • EXIF metadata extraction • Scene validation'
-                : 'Tier 1: Detection → Tier 2: Taxonomy → Tier 3: Confidence threshold'}
+                : 'Chain-of-Thought: Textures → Setting → Reconcile → Classify'}
             </p>
             {imageHash && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center font-mono">
