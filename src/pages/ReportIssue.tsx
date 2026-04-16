@@ -10,6 +10,7 @@ import AppFooter from "@/components/AppFooter";
 import { getDepartmentForCategory, calculatePriorityScore } from "@/lib/mockData";
 import {
   classifyIssue,
+  classifyIssueWithVision,
   validateScene,
   hashImage,
   checkExifTrust,
@@ -93,37 +94,40 @@ export default function ReportIssue() {
       const trust = checkExifTrust(geo.lat, geo.lng);
       setExifTrust(trust);
 
-      // Proceed to AI classification
-      runClassification();
+      // Proceed to true vision-based AI classification
+      runVisionClassification(dataUrl);
     };
     reader.readAsDataURL(file);
   };
 
-  // ─── Classification Pipeline ────────────────────────────────────────────
-  const runClassification = useCallback(() => {
+  // ─── Vision Classification Pipeline (Gemini via Lovable AI Gateway) ─────
+  const runVisionClassification = useCallback(async (dataUrl: string) => {
     setStep('classify');
-    setTimeout(() => {
-      const result = classifyIssue(description);
+    try {
+      const result = await classifyIssueWithVision(dataUrl, description);
+      if (result.sceneRejected) {
+        setSceneError(result.rejectionReason || 'Non-civic scene detected. Please capture public infrastructure.');
+        setStep('upload');
+        return;
+      }
       setClassification(result);
       setDuplicateFound(Math.random() > 0.7);
       setStep('details');
-    }, 2200);
-  }, [description]);
-
-  // Re-classify when description changes on details step
-  useEffect(() => {
-    if (step === 'details' && description.length > 3) {
-      // Scene validation first
-      const scene = validateScene(description);
-      if (!scene.valid) {
-        setSceneError(scene.reason || 'Invalid scene');
-        return;
-      }
-      setSceneError(null);
+    } catch (err: any) {
+      const msg = err?.message || 'Vision classification failed';
+      toast({
+        title: 'AI classification failed',
+        description: msg.includes('Rate') ? 'Rate limit hit — try again in a moment.' :
+                     msg.includes('credits') ? 'AI credits exhausted. Please add credits.' :
+                     'Falling back to keyword-based classification.',
+        variant: 'destructive',
+      });
+      // Graceful fallback to keyword classification
       const result = classifyIssue(description);
       setClassification(result);
+      setStep('details');
     }
-  }, [description, step]);
+  }, [description, toast]);
 
   // ─── Manual Location ────────────────────────────────────────────────────
   const handleManualLocation = () => {
@@ -371,12 +375,12 @@ export default function ReportIssue() {
             )}
             <Loader2 className="h-8 w-8 animate-spin text-accent mx-auto" />
             <p className="text-sm font-medium text-foreground">
-              {step === 'validating' ? 'Running CivicGuard Pre-Processor...' : 'Triple-Pass Classification Engine...'}
+              {step === 'validating' ? 'Running CivicGuard Pre-Processor...' : 'Gemini Vision Analyzing Image...'}
             </p>
             <p className="text-xs text-muted-foreground">
               {step === 'validating'
                 ? 'SHA-256 hashing • EXIF metadata extraction • Scene validation'
-                : 'Tier 1: Detection → Tier 2: Taxonomy → Tier 3: Confidence threshold'}
+                : 'Chain-of-Thought: Textures → Setting → Reconcile → Classify'}
             </p>
             {imageHash && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground justify-center font-mono">

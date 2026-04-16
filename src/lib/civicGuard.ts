@@ -198,6 +198,40 @@ export const ROUTING_MATRIX: { category: TicketCategory; description: string; de
   { category: 'Waste Overflow', description: 'Overflowing bins / scattered litter', department: 'Waste Management' },
 ];
 
+// ─── Vision-Based Classification (Lovable AI Gateway · Gemini) ─────────────
+import { supabase } from '@/integrations/supabase/client';
+
+export async function classifyIssueWithVision(
+  imageDataUrl: string,
+  description: string,
+): Promise<ClassificationResult & { sceneRejected?: boolean; rejectionReason?: string | null }> {
+  const { data, error } = await supabase.functions.invoke('classify-image', {
+    body: { imageDataUrl, description },
+  });
+  if (error) throw new Error(error.message || 'Vision classification failed');
+  if (data?.error) throw new Error(data.error);
+
+  const cot: CoTAnalysis = {
+    textures: data.cot?.textures || [],
+    setting: data.cot?.setting || [],
+    reconciled: !!data.cot?.reconciled,
+    reasoning: data.cot?.reasoning || '',
+  };
+
+  return {
+    category: data.category as TicketCategory | null,
+    department: data.department as Department | null,
+    confidence: typeof data.confidence === 'number' ? data.confidence : 0,
+    detection: { primaryObject: data.tier1Object || 'unknown', matchedKeywords: [] },
+    cot,
+    accepted: !!data.accepted,
+    isContextualPass: !!data.isContextualPass,
+    tier1Object: data.tier1Object || 'unknown',
+    sceneRejected: data.isCivicScene === false,
+    rejectionReason: data.rejectionReason || null,
+  };
+}
+
 // ─── SHA-256 Image Hashing ──────────────────────────────────────────────────
 export async function hashImage(dataUrl: string): Promise<string> {
   const base64 = dataUrl.split(',')[1] || '';
