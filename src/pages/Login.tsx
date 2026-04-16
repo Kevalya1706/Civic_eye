@@ -79,9 +79,15 @@ export default function Login() {
             </div>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
-            Built by Team Minions 🍌 — AI-Powered Urban Governance
-          </p>
+          <div className="flex flex-col items-center justify-center gap-2 text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 border border-warning/30">
+              <Lock className="h-3 w-3 text-warning" />
+              <span className="text-xs font-semibold text-warning">Authorised Member only</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Built by Team Minions 🍌 — AI-Powered Urban Governance
+            </p>
+          </div>
         </div>
       </div>
       <AppFooter />

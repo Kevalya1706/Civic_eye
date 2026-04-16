@@ -25,6 +25,7 @@ interface GeoState {
   stableSeconds: number;
 }
 
+// v8.0 Forensic GPS: strict 20m lock. Below 10m = high, 10-20m = standard (allowed).
 function getTier(accuracy: number | null): PrecisionTier {
   if (accuracy === null) return "low";
   if (accuracy <= 10) return "high";

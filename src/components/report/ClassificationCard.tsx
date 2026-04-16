@@ -33,21 +33,35 @@ export default function ClassificationCard({ result, exifTrust, address, lat, ln
         </Badge>
       </div>
 
-      {/* Tier 3: Confidence */}
+      {/* Tier 3: Confidence (v8.0 threshold ≥75%) */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-muted-foreground">Tier 3 — Confidence</span>
         <div className="flex items-center gap-2">
           <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all ${confidencePct >= 92 ? 'bg-success' : confidencePct >= 70 ? 'bg-warning' : 'bg-destructive'}`}
+              className={`h-full rounded-full transition-all ${confidencePct >= 75 ? 'bg-success' : confidencePct >= 60 ? 'bg-warning' : 'bg-destructive'}`}
               style={{ width: `${confidencePct}%` }}
             />
           </div>
-          <span className={`text-xs font-bold ${confidencePct >= 92 ? 'text-success' : 'text-warning'}`}>
+          <span className={`text-xs font-bold ${confidencePct >= 75 ? 'text-success' : 'text-warning'}`}>
             {confidencePct}%
           </span>
         </div>
       </div>
+
+      {/* Contextual Pass indicator */}
+      {result.isContextualPass && (
+        <div className="text-xs p-2 rounded-md bg-info/10 border border-info/20 text-foreground">
+          🧠 <strong>General Infrastructure Issue</strong> — civic context detected, specific fault unclassified.
+        </div>
+      )}
+
+      {/* CoT Reasoning */}
+      {result.cot && (
+        <div className="text-[11px] text-muted-foreground italic font-mono pt-1 border-t border-border/30">
+          CoT: {result.cot.reasoning}
+        </div>
+      )}
 
       {/* Department */}
       <div className="flex items-center justify-between">
