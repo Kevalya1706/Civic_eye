@@ -176,9 +176,10 @@ export default function ReportIssue() {
       });
 
       setStep('done');
+      const points = geo.precisionTier === 'low' ? 5 : 20;
       toast({
         title: "Issue Reported! 🎉",
-        description: `Routed to ${classification.department}. You earned +10 Civic Points.`,
+        description: `Routed to ${classification.department}. You earned +${points} Civic Points.`,
       });
     } catch (err: any) {
       toast({ title: "Error", description: err.message || "Failed to submit ticket.", variant: "destructive" });
