@@ -117,6 +117,10 @@ export function useCreateTicket() {
         .select()
         .single();
       if (error) throw error;
+      // Oracle v10.0 — fire-and-forget autonomous dispatch
+      supabase.functions.invoke("auto-dispatch", { body: { ticket_id: data.id } }).catch((e) => {
+        console.warn("auto-dispatch failed", e);
+      });
       return data;
     },
     onSuccess: () => {
