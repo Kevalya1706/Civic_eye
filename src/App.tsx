@@ -11,6 +11,8 @@ import CommunityFeed from "./pages/CommunityFeed";
 import MyTickets from "./pages/MyTickets";
 import Leaderboard from "./pages/Leaderboard";
 import AdminDashboard from "./pages/AdminDashboard";
+import CommandDashboard from "./pages/CommandDashboard";
+import ContractorView from "./pages/ContractorView";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +33,8 @@ const App = () => (
             <Route path="/my-tickets" element={<AuthGuard><MyTickets /></AuthGuard>} />
             <Route path="/leaderboard" element={<AuthGuard><Leaderboard /></AuthGuard>} />
             <Route path="/admin" element={<AuthGuard><AdminDashboard /></AuthGuard>} />
+            <Route path="/command" element={<AuthGuard><CommandDashboard /></AuthGuard>} />
+            <Route path="/contractor/:contractorId" element={<AuthGuard><ContractorView /></AuthGuard>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
