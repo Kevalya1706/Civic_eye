@@ -2,15 +2,3 @@ project_id = "snjjwezserotonkwwcmi"
 
 [functions.classify-image]
 verify_jwt = false
-
-[functions.auto-dispatch]
-verify_jwt = false
-
-[functions.escalation-tick]
-verify_jwt = false
-
-[functions.generate-press-release]
-verify_jwt = false
-
-[functions.webauthn]
-verify_jwt = false
