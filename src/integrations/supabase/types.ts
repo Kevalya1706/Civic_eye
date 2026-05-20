@@ -17,10 +17,14 @@ export type Database = {
       contractors: {
         Row: {
           active: boolean
+          company_name: string | null
           created_at: string
           department: Database["public"]["Enums"]["department_type"]
           email: string | null
+          emergency_contact: string | null
+          engineer_id: string | null
           id: string
+          lead_engineer_name: string | null
           name: string
           phone: string | null
           user_id: string | null
@@ -28,10 +32,14 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          company_name?: string | null
           created_at?: string
           department: Database["public"]["Enums"]["department_type"]
           email?: string | null
+          emergency_contact?: string | null
+          engineer_id?: string | null
           id?: string
+          lead_engineer_name?: string | null
           name: string
           phone?: string | null
           user_id?: string | null
@@ -39,10 +47,14 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          company_name?: string | null
           created_at?: string
           department?: Database["public"]["Enums"]["department_type"]
           email?: string | null
+          emergency_contact?: string | null
+          engineer_id?: string | null
           id?: string
+          lead_engineer_name?: string | null
           name?: string
           phone?: string | null
           user_id?: string | null
@@ -388,6 +400,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calc_social_cost: { Args: { _ticket_id: string }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
