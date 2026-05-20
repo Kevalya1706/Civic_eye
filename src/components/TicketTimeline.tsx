@@ -1,34 +1,67 @@
-import { Clock, Eye, Truck, CheckCircle, Bell } from "lucide-react";
+import { Clock, Eye, Truck, CheckCircle, Bell, Zap, HardHat, Phone, Megaphone } from "lucide-react";
 import { Button } from "./ui/button";
 import type { TicketRow } from "@/hooks/useTickets";
+import { useContractor, CONTRACTOR_FALLBACK } from "@/hooks/useContractor";
 
 interface Props {
   ticket: TicketRow;
   onNudge?: (id: string) => void;
 }
 
-function TimelineStep({ icon: Icon, label, timestamp, active, color }: {
+function TimelineStep({ icon: Icon, label, timestamp, active, color, children, last }: {
   icon: React.ElementType;
   label: string;
   timestamp: string | null;
   active: boolean;
   color: string;
+  children?: React.ReactNode;
+  last?: boolean;
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center self-stretch">
         <div className={`h-8 w-8 rounded-full flex items-center justify-center ${active ? color : 'bg-muted text-muted-foreground'}`}>
           <Icon className="h-4 w-4" />
         </div>
-        <div className="w-0.5 h-6 bg-border" />
+        {!last && <div className="w-0.5 flex-1 min-h-6 bg-border" />}
       </div>
-      <div className="pt-1">
+      <div className="pt-1 pb-3 flex-1">
         <p className={`text-sm font-medium ${active ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</p>
         {timestamp ? (
           <p className="text-xs text-muted-foreground">{new Date(timestamp).toLocaleString()}</p>
         ) : (
           <p className="text-xs text-muted-foreground italic">Pending</p>
         )}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ContractorCredentialsCard({ ticket }: { ticket: TicketRow }) {
+  const { data: contractor } = useContractor(ticket.assigned_contractor_id);
+  const company = contractor?.company_name || contractor?.name || CONTRACTOR_FALLBACK.company_name;
+  const engineer = contractor?.lead_engineer_name || CONTRACTOR_FALLBACK.lead_engineer_name;
+  const engineerId = contractor?.engineer_id || CONTRACTOR_FALLBACK.engineer_id;
+  const contact = contractor?.emergency_contact || contractor?.phone || CONTRACTOR_FALLBACK.emergency_contact;
+
+  return (
+    <div className="mt-2 glass-card rounded-lg p-3 bg-info/5 border border-info/20 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs flex-wrap">
+        <Zap className="h-3.5 w-3.5 text-info flex-shrink-0" />
+        <span className="text-muted-foreground">Assigned To:</span>
+        <span className="font-semibold text-foreground">{company}</span>
+      </div>
+      <div className="flex items-center gap-1.5 text-xs flex-wrap">
+        <HardHat className="h-3.5 w-3.5 text-info flex-shrink-0" />
+        <span className="text-muted-foreground">Lead Engineer:</span>
+        <span className="font-semibold text-foreground">{engineer}</span>
+        <span className="text-muted-foreground">(ID: #{engineerId})</span>
+      </div>
+      <div className="flex items-center gap-1.5 text-xs flex-wrap">
+        <Phone className="h-3.5 w-3.5 text-info flex-shrink-0" />
+        <span className="text-muted-foreground">Emergency Dispatch:</span>
+        <a href={`tel:${contact}`} className="font-semibold text-foreground hover:text-info">{contact}</a>
       </div>
     </div>
   );
@@ -37,19 +70,24 @@ function TimelineStep({ icon: Icon, label, timestamp, active, color }: {
 export default function TicketTimeline({ ticket, onNudge }: Props) {
   const submittedAt = ticket.created_at;
   const reviewedAt = ticket.admin_reviewed_at;
-  const dispatchedAt = ticket.crew_dispatched_at;
+  const dispatchedAt = ticket.crew_dispatched_at || ticket.assigned_at;
   const resolvedAt = ticket.resolved_at;
+  const pressAt = ticket.press_released_at;
 
-  // Nudge is active if ticket has been in Open/submitted for >48 hours
   const ageMs = Date.now() - new Date(submittedAt).getTime();
   const canNudge = ticket.status === 'Open' && ageMs > 48 * 60 * 60 * 1000;
 
   return (
-    <div className="space-y-1 py-2">
+    <div className="space-y-0 py-2">
       <TimelineStep icon={Clock} label="Submitted" timestamp={submittedAt} active={true} color="bg-accent/20 text-accent-foreground" />
       <TimelineStep icon={Eye} label="Admin Reviewed" timestamp={reviewedAt} active={!!reviewedAt} color="bg-info/20 text-info" />
-      <TimelineStep icon={Truck} label="Crew Dispatched" timestamp={dispatchedAt} active={!!dispatchedAt} color="bg-warning/20 text-warning" />
-      <TimelineStep icon={CheckCircle} label="Resolved" timestamp={resolvedAt} active={!!resolvedAt} color="bg-success/20 text-success" />
+      <TimelineStep icon={Truck} label="Crew Dispatched" timestamp={dispatchedAt} active={!!dispatchedAt} color="bg-warning/20 text-warning">
+        {dispatchedAt && <ContractorCredentialsCard ticket={ticket} />}
+      </TimelineStep>
+      <TimelineStep icon={CheckCircle} label="Resolved" timestamp={resolvedAt} active={!!resolvedAt} color="bg-success/20 text-success" last={!pressAt} />
+      {pressAt && (
+        <TimelineStep icon={Megaphone} label="Press Desk Alerted" timestamp={pressAt} active={true} color="bg-destructive/20 text-destructive" last />
+      )}
 
       {canNudge && onNudge && (
         <div className="pt-2">
