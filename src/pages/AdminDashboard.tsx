@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import AdminGuard from "@/components/AdminGuard";
 import AppFooter from "@/components/AppFooter";
 import { useAllTickets, useUpdateTicket, useUpvoteTicket, useNudgeTicket, type TicketRow } from "@/hooks/useTickets";
+import { supabase } from "@/integrations/supabase/client";
 import AdminMap from "@/components/admin/AdminMap";
 import VerificationBadge from "@/components/admin/VerificationBadge";
 import AuditModal from "@/components/admin/AuditModal";
@@ -39,7 +40,7 @@ function StatCard({ label, value, icon: Icon, color, suffix }: { label: string; 
 function AssignResolvePanel({ ticket, onAssign, onResolve }: {
   ticket: TicketRow;
   onAssign: (id: string, dept: string) => void;
-  onResolve: (id: string) => void;
+  onResolve: (id: string, file: File) => void;
 }) {
   const [dept, setDept] = useState(ticket.department);
   const [fixPhoto, setFixPhoto] = useState<File | null>(null);
@@ -111,7 +112,7 @@ function AssignResolvePanel({ ticket, onAssign, onResolve }: {
                 variant="civic"
                 className="w-full"
                 disabled={!fixPhoto}
-                onClick={() => onResolve(ticket.id)}
+                onClick={() => onResolve(ticket.id, fixPhoto!)}
               >
                 {fixPhoto ? "Mark as Resolved ✓" : "Upload Fix Photo to Resolve"}
               </Button>
@@ -173,11 +174,45 @@ function AdminDashboardInner() {
     );
   };
 
-  const handleResolve = (id: string) => {
-    updateTicket.mutate(
-      { id, status: "Resolved", resolved_at: new Date().toISOString() },
-      { onSuccess: () => toast({ title: "Ticket Resolved ✓", description: "Citizen has been notified." }) }
-    );
+  const handleResolve = async (id: string, file: File) => {
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `resolutions/${id}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("ticket-photos").upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("ticket-photos").getPublicUrl(path);
+      const resolution_image_url = pub.publicUrl;
+
+      await new Promise<void>((resolve, reject) => updateTicket.mutate(
+        {
+          id,
+          status: "Resolved",
+          resolved_at: new Date().toISOString(),
+          fixed_photo_url: resolution_image_url,
+          resolution_image_url,
+          ai_audit_status: "PROCESSING",
+        },
+        { onSuccess: () => resolve(), onError: (e) => reject(e) }
+      ));
+
+      toast({ title: "Resolution uploaded ✓", description: "AI Forensic Auditor is verifying the repair…" });
+
+      // Trigger AI verification (async, don't block)
+      supabase.functions.invoke("verify-resolution", { body: { ticket_id: id } })
+        .then(({ data, error }) => {
+          if (error) {
+            toast({ title: "AI Audit failed", description: error.message, variant: "destructive" });
+            return;
+          }
+          if (data?.status === "FAILED_FRAUD") {
+            toast({ title: "⚠️ Fraud detected", description: "Ticket reverted to In Progress. See Audit Trail.", variant: "destructive" });
+          } else if (data?.status === "VERIFIED_SUCCESS") {
+            toast({ title: `✓ AI Integrity Verified (${data.score}%)`, description: "Repair confirmed by forensic audit." });
+          }
+        });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    }
   };
 
   // Dept-specific stats
