@@ -365,11 +365,18 @@ function AdminDashboardInner() {
                       <FileText className="h-3 w-3 mr-1" /> Audit
                     </Button>
                   ) : (
-                    <AssignResolvePanel
-                      ticket={ticket}
-                      onAssign={handleAssign}
-                      onResolve={handleResolve}
-                    />
+                    <>
+                      {(ticket.resolution_image_url || ticket.ai_audit_status === "FAILED_FRAUD") && (
+                        <Button variant="ghost" size="sm" className="text-xs h-7" onClick={(e) => { e.stopPropagation(); setAuditTicket(ticket); }}>
+                          <FileText className="h-3 w-3 mr-1" /> Audit
+                        </Button>
+                      )}
+                      <AssignResolvePanel
+                        ticket={ticket}
+                        onAssign={handleAssign}
+                        onResolve={handleResolve}
+                      />
+                    </>
                   )}
                 </div>
                 {/* Estimated cost */}
