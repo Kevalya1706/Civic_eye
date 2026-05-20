@@ -6,3 +6,7 @@ verify_jwt = false
 [functions.executive-audit]
 verify_jwt = false
 
+[functions.verify-resolution]
+verify_jwt = false
+
+
