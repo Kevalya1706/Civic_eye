@@ -31,6 +31,14 @@ export interface TicketRow {
   crew_dispatched_at: string | null;
   nudge_count: number;
   last_nudged_at: string | null;
+  assigned_contractor_id: string | null;
+  assigned_at: string | null;
+  sla_deadline: string | null;
+  social_cost: number | null;
+  traffic_density: number | null;
+  ward: string | null;
+  press_released_at: string | null;
+  escalation_level: number | null;
 }
 
 export function useMyTickets() {
