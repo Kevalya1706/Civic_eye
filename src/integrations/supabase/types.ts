@@ -29,6 +29,7 @@ export type Database = {
           phone: string | null
           user_id: string | null
           ward: string
+          ward_id: string | null
         }
         Insert: {
           active?: boolean
@@ -44,6 +45,7 @@ export type Database = {
           phone?: string | null
           user_id?: string | null
           ward: string
+          ward_id?: string | null
         }
         Update: {
           active?: boolean
@@ -59,8 +61,17 @@ export type Database = {
           phone?: string | null
           user_id?: string | null
           ward?: string
+          ward_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contractors_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       department_scores: {
         Row: {
@@ -214,6 +225,9 @@ export type Database = {
         Row: {
           address: string
           admin_reviewed_at: string | null
+          ai_analysis_notes: Json | null
+          ai_audit_status: string
+          ai_integrity_score: number | null
           assigned_at: string | null
           assigned_contractor_id: string | null
           category: Database["public"]["Enums"]["ticket_category"]
@@ -227,6 +241,7 @@ export type Database = {
           full_precise_address: string | null
           id: string
           image_hash: string | null
+          image_url: string | null
           last_nudged_at: string | null
           lat: number
           lng: number
@@ -237,6 +252,7 @@ export type Database = {
           precision_tier: Database["public"]["Enums"]["precision_tier"] | null
           press_released_at: string | null
           priority_score: number
+          resolution_image_url: string | null
           resolved_at: string | null
           sla_deadline: string | null
           social_cost: number
@@ -247,10 +263,14 @@ export type Database = {
           user_name: string
           user_trust_score: number
           ward: string | null
+          ward_id: string | null
         }
         Insert: {
           address?: string
           admin_reviewed_at?: string | null
+          ai_analysis_notes?: Json | null
+          ai_audit_status?: string
+          ai_integrity_score?: number | null
           assigned_at?: string | null
           assigned_contractor_id?: string | null
           category: Database["public"]["Enums"]["ticket_category"]
@@ -264,6 +284,7 @@ export type Database = {
           full_precise_address?: string | null
           id?: string
           image_hash?: string | null
+          image_url?: string | null
           last_nudged_at?: string | null
           lat: number
           lng: number
@@ -274,6 +295,7 @@ export type Database = {
           precision_tier?: Database["public"]["Enums"]["precision_tier"] | null
           press_released_at?: string | null
           priority_score?: number
+          resolution_image_url?: string | null
           resolved_at?: string | null
           sla_deadline?: string | null
           social_cost?: number
@@ -284,10 +306,14 @@ export type Database = {
           user_name?: string
           user_trust_score?: number
           ward?: string | null
+          ward_id?: string | null
         }
         Update: {
           address?: string
           admin_reviewed_at?: string | null
+          ai_analysis_notes?: Json | null
+          ai_audit_status?: string
+          ai_integrity_score?: number | null
           assigned_at?: string | null
           assigned_contractor_id?: string | null
           category?: Database["public"]["Enums"]["ticket_category"]
@@ -301,6 +327,7 @@ export type Database = {
           full_precise_address?: string | null
           id?: string
           image_hash?: string | null
+          image_url?: string | null
           last_nudged_at?: string | null
           lat?: number
           lng?: number
@@ -311,6 +338,7 @@ export type Database = {
           precision_tier?: Database["public"]["Enums"]["precision_tier"] | null
           press_released_at?: string | null
           priority_score?: number
+          resolution_image_url?: string | null
           resolved_at?: string | null
           sla_deadline?: string | null
           social_cost?: number
@@ -321,6 +349,7 @@ export type Database = {
           user_name?: string
           user_trust_score?: number
           ward?: string | null
+          ward_id?: string | null
         }
         Relationships: [
           {
@@ -328,6 +357,13 @@ export type Database = {
             columns: ["assigned_contractor_id"]
             isOneToOne: false
             referencedRelation: "contractors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_ward_id_fkey"
+            columns: ["ward_id"]
+            isOneToOne: false
+            referencedRelation: "wards"
             referencedColumns: ["id"]
           },
         ]
@@ -356,6 +392,27 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
           ward?: string | null
+        }
+        Relationships: []
+      }
+      wards: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          city?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }

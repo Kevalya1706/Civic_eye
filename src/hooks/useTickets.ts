@@ -39,6 +39,12 @@ export interface TicketRow {
   ward: string | null;
   press_released_at: string | null;
   escalation_level: number | null;
+  ward_id: string | null;
+  image_url: string | null;
+  resolution_image_url: string | null;
+  ai_integrity_score: number | null;
+  ai_audit_status: "PENDING" | "PROCESSING" | "VERIFIED_SUCCESS" | "FAILED_FRAUD" | "ERROR" | null;
+  ai_analysis_notes: any;
 }
 
 export function useMyTickets() {
