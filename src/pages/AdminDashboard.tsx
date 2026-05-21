@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS, type Department } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
-import { toast as sonner } from "sonner";
+
 import AdminGuard from "@/components/AdminGuard";
 import AppFooter from "@/components/AppFooter";
 import { useAllTickets, useUpdateTicket, useUpvoteTicket, useNudgeTicket, type TicketRow } from "@/hooks/useTickets";
