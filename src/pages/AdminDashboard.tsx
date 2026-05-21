@@ -85,6 +85,43 @@ function AdminDashboardInner() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [auditTicket, setAuditTicket] = useState<TicketRow | null>(null);
+  const [resolveTicket, setResolveTicket] = useState<TicketRow | null>(null);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [userLoc, setUserLoc] = useState<{ lat: number | null; lng: number | null; error: string | null }>({
+    lat: null, lng: null, error: null,
+  });
+
+  // Real-time geolocation watch
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setUserLoc(p => ({ ...p, error: "Geolocation unsupported" }));
+      return;
+    }
+    const opts: PositionOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude, error: null }),
+      (err) => setUserLoc(p => ({ ...p, error: err.message })),
+      opts,
+    );
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude, error: null }),
+      (err) => setUserLoc(p => ({ ...p, error: err.message })),
+      opts,
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+  // Open nav drawer when a ticket pin is selected
+  const handleTicketSelect = (id: string) => {
+    setSelectedTicketId(id);
+    setNavDrawerOpen(true);
+  };
+
+  const selectedTicket = useMemo(
+    () => tickets.find(t => t.id === selectedTicketId) || null,
+    [tickets, selectedTicketId]
+  );
+
 
   const filtered = useMemo(() => {
     const base = deptFilter === "All" ? tickets : tickets.filter(t => t.department === deptFilter);
