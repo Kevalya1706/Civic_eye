@@ -104,12 +104,13 @@ export default function AdminMap({ tickets, onTicketSelect, selectedTicketId, sh
       });
     }
 
-    // Fit bounds
-    if (tickets.length > 0) {
+    // Fit bounds only when no ticket is selected (avoids fighting user pan)
+    if (tickets.length > 0 && !selectedTicketId) {
       const bounds = L.latLngBounds(tickets.map(t => [t.lat, t.lng]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     }
   }, [tickets, showHeatmap, selectedTicketId, onTicketSelect]);
+
 
   return <div ref={mapRef} className="h-full w-full rounded-xl" />;
 }
