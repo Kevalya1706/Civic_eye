@@ -84,7 +84,10 @@ export default function AdminMap({ tickets, onTicketSelect, selectedTicketId, sh
       tickets.forEach(t => {
         const marker = L.marker([t.lat, t.lng], { icon: createPinIcon(t.priority_score) });
         marker.bindPopup(`<strong>${t.category}</strong><br/>${t.address}<br/>S-Score: ${Math.round(t.priority_score)}`);
-        marker.on("click", () => onTicketSelect?.(t.id));
+        marker.on("click", () => {
+          map.flyTo([t.lat, t.lng], Math.max(map.getZoom(), 16), { duration: 0.7 });
+          onTicketSelect?.(t.id);
+        });
 
         // 10m accuracy circle
         const circle = L.circle([t.lat, t.lng], {
@@ -93,6 +96,7 @@ export default function AdminMap({ tickets, onTicketSelect, selectedTicketId, sh
 
         markers.addLayer(marker);
         markers.addLayer(circle);
+
 
         if (t.id === selectedTicketId) {
           marker.openPopup();
