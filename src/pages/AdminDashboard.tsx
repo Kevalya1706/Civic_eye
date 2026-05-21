@@ -343,13 +343,31 @@ function AdminDashboardInner() {
         )}
       </div>
 
-      {/* Audit Modal */}
+      {/* Modals & drawers */}
       <AuditModal ticket={auditTicket} open={!!auditTicket} onClose={() => setAuditTicket(null)} />
+      <EvidenceClosureModal
+        ticket={resolveTicket}
+        open={!!resolveTicket}
+        onClose={() => setResolveTicket(null)}
+      />
+      <NavigationDrawer
+        ticket={selectedTicket}
+        open={navDrawerOpen && !!selectedTicket}
+        onClose={() => setNavDrawerOpen(false)}
+        userLat={userLoc.lat}
+        userLng={userLoc.lng}
+      />
+      {userLoc.error && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-full bg-warning/90 text-warning-foreground text-xs px-3 py-1 shadow-md">
+          ⚠ Live tracking unavailable: {userLoc.error}
+        </div>
+      )}
 
       <AppFooter />
     </div>
   );
 }
+
 
 export default function AdminDashboard() {
   return (
