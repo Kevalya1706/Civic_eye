@@ -39,13 +39,12 @@ function StatCard({ label, value, icon: Icon, color, suffix }: { label: string; 
   );
 }
 
-function AssignResolvePanel({ ticket, onAssign, onResolve }: {
+function AssignResolvePanel({ ticket, onAssign, onOpenResolve }: {
   ticket: TicketRow;
   onAssign: (id: string, dept: string) => void;
-  onResolve: (id: string, file: File) => void;
+  onOpenResolve: (t: TicketRow) => void;
 }) {
   const [dept, setDept] = useState(ticket.department);
-  const [fixPhoto, setFixPhoto] = useState<File | null>(null);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -67,64 +66,14 @@ function AssignResolvePanel({ ticket, onAssign, onResolve }: {
         </div>
       )}
       {ticket.status === "In Progress" && (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="civic" size="sm" className="text-xs h-8">
-              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Evidence-Based Closure — {ticket.category}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">{ticket.full_precise_address || ticket.address}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-muted h-32 flex items-center justify-center">
-                  {ticket.photo_url ? (
-                    <img src={ticket.photo_url} alt="Before" className="rounded-xl h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Before Photo</span>
-                  )}
-                </div>
-                <label className="rounded-xl bg-muted h-32 flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors border-2 border-dashed border-border">
-                  <input type="file" accept="image/*" className="hidden" onChange={e => setFixPhoto(e.target.files?.[0] || null)} />
-                  <div className="text-center">
-                    {fixPhoto ? (
-                      <span className="text-xs text-success font-medium">✓ {fixPhoto.name}</span>
-                    ) : (
-                      <>
-                        <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                        <span className="text-xs text-muted-foreground">Upload "Fixed" Photo</span>
-                      </>
-                    )}
-                  </div>
-                </label>
-              </div>
-              <div className="glass-card rounded-lg p-3 bg-accent/5 border-accent/20">
-                <div className="flex items-center gap-2 text-sm">
-                  <Eye className="h-4 w-4 text-accent" />
-                  <span className="font-medium text-foreground">AI Verification</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Before & after photos will be compared to validate the fix.
-                </p>
-              </div>
-              <Button
-                variant="civic"
-                className="w-full"
-                disabled={!fixPhoto}
-                onClick={() => onResolve(ticket.id, fixPhoto!)}
-              >
-                {fixPhoto ? "Mark as Resolved ✓" : "Upload Fix Photo to Resolve"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="civic" size="sm" className="text-xs h-8" onClick={() => onOpenResolve(ticket)}>
+          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
+        </Button>
       )}
     </div>
   );
 }
+
 
 function AdminDashboardInner() {
   const { toast } = useToast();
