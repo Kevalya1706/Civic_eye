@@ -256,7 +256,7 @@ function AdminDashboardInner() {
           <div className="h-72 rounded-xl overflow-hidden border border-border">
             <AdminMap
               tickets={filtered}
-              onTicketSelect={setSelectedTicketId}
+              onTicketSelect={handleTicketSelect}
               selectedTicketId={selectedTicketId}
               showHeatmap={showHeatmap}
             />
