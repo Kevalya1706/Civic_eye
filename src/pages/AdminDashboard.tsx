@@ -162,46 +162,8 @@ function AdminDashboardInner() {
     );
   };
 
-  const handleResolve = async (id: string, file: File) => {
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `resolutions/${id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("ticket-photos").upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("ticket-photos").getPublicUrl(path);
-      const resolution_image_url = pub.publicUrl;
 
-      await new Promise<void>((resolve, reject) => updateTicket.mutate(
-        {
-          id,
-          status: "Resolved",
-          resolved_at: new Date().toISOString(),
-          fixed_photo_url: resolution_image_url,
-          resolution_image_url,
-          ai_audit_status: "PROCESSING",
-        },
-        { onSuccess: () => resolve(), onError: (e) => reject(e) }
-      ));
 
-      toast({ title: "Resolution uploaded ✓", description: "AI Forensic Auditor is verifying the repair…" });
-
-      // Trigger AI verification (async, don't block)
-      supabase.functions.invoke("verify-resolution", { body: { ticket_id: id } })
-        .then(({ data, error }) => {
-          if (error) {
-            toast({ title: "AI Audit failed", description: error.message, variant: "destructive" });
-            return;
-          }
-          if (data?.status === "FAILED_FRAUD") {
-            toast({ title: "⚠️ Fraud detected", description: "Ticket reverted to In Progress. See Audit Trail.", variant: "destructive" });
-          } else if (data?.status === "VERIFIED_SUCCESS") {
-            toast({ title: `✓ AI Integrity Verified (${data.score}%)`, description: "Repair confirmed by forensic audit." });
-          }
-        });
-    } catch (e: any) {
-      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
-    }
-  };
 
   // Dept-specific stats
   const deptStats = useMemo(() => {
