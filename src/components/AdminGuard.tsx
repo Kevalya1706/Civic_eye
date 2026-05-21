@@ -44,9 +44,8 @@ export default function AdminGuard({ children }: Props) {
           userVerification: "required",
           rpId: window.location.hostname,
         },
-        // @ts-expect-error — mediation supported in modern browsers
-        mediation: "optional",
       } as CredentialRequestOptions);
+
 
       if (credential) {
         // Server-side @simplewebauthn/server verification stub — accepts the assertion locally
