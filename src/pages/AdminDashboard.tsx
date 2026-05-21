@@ -1,25 +1,27 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
-  Filter, CheckCircle, Upload, Eye, BarChart3, AlertTriangle, Loader2,
-  Map, Layers, Shield, ShieldAlert, DollarSign, Clock, TrendingUp,
-  FileText, Users, Zap
+  Filter, CheckCircle, Eye, BarChart3, AlertTriangle, Loader2,
+  Map, Layers, DollarSign, Clock,
+  FileText, Zap
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import TicketCard from "@/components/TicketCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS, type Department } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+
 import AdminGuard from "@/components/AdminGuard";
 import AppFooter from "@/components/AppFooter";
 import { useAllTickets, useUpdateTicket, useUpvoteTicket, useNudgeTicket, type TicketRow } from "@/hooks/useTickets";
-import { supabase } from "@/integrations/supabase/client";
 import AdminMap from "@/components/admin/AdminMap";
 import VerificationBadge from "@/components/admin/VerificationBadge";
 import AuditModal from "@/components/admin/AuditModal";
+import EvidenceClosureModal from "@/components/admin/EvidenceClosureModal";
+import NavigationDrawer from "@/components/admin/NavigationDrawer";
 import { getTotalRepairedValue, formatCurrency, getTicketCost } from "@/components/admin/CostTracker";
+
 
 function StatCard({ label, value, icon: Icon, color, suffix }: { label: string; value: string | number; icon: React.ElementType; color: string; suffix?: string }) {
   return (
@@ -37,13 +39,12 @@ function StatCard({ label, value, icon: Icon, color, suffix }: { label: string; 
   );
 }
 
-function AssignResolvePanel({ ticket, onAssign, onResolve }: {
+function AssignResolvePanel({ ticket, onAssign, onOpenResolve }: {
   ticket: TicketRow;
   onAssign: (id: string, dept: string) => void;
-  onResolve: (id: string, file: File) => void;
+  onOpenResolve: (t: TicketRow) => void;
 }) {
   const [dept, setDept] = useState(ticket.department);
-  const [fixPhoto, setFixPhoto] = useState<File | null>(null);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -65,64 +66,14 @@ function AssignResolvePanel({ ticket, onAssign, onResolve }: {
         </div>
       )}
       {ticket.status === "In Progress" && (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="civic" size="sm" className="text-xs h-8">
-              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Evidence-Based Closure — {ticket.category}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <p className="text-sm text-muted-foreground">{ticket.full_precise_address || ticket.address}</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-muted h-32 flex items-center justify-center">
-                  {ticket.photo_url ? (
-                    <img src={ticket.photo_url} alt="Before" className="rounded-xl h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Before Photo</span>
-                  )}
-                </div>
-                <label className="rounded-xl bg-muted h-32 flex items-center justify-center cursor-pointer hover:bg-muted/80 transition-colors border-2 border-dashed border-border">
-                  <input type="file" accept="image/*" className="hidden" onChange={e => setFixPhoto(e.target.files?.[0] || null)} />
-                  <div className="text-center">
-                    {fixPhoto ? (
-                      <span className="text-xs text-success font-medium">✓ {fixPhoto.name}</span>
-                    ) : (
-                      <>
-                        <Upload className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-                        <span className="text-xs text-muted-foreground">Upload "Fixed" Photo</span>
-                      </>
-                    )}
-                  </div>
-                </label>
-              </div>
-              <div className="glass-card rounded-lg p-3 bg-accent/5 border-accent/20">
-                <div className="flex items-center gap-2 text-sm">
-                  <Eye className="h-4 w-4 text-accent" />
-                  <span className="font-medium text-foreground">AI Verification</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Before & after photos will be compared to validate the fix.
-                </p>
-              </div>
-              <Button
-                variant="civic"
-                className="w-full"
-                disabled={!fixPhoto}
-                onClick={() => onResolve(ticket.id, fixPhoto!)}
-              >
-                {fixPhoto ? "Mark as Resolved ✓" : "Upload Fix Photo to Resolve"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button variant="civic" size="sm" className="text-xs h-8" onClick={() => onOpenResolve(ticket)}>
+          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Resolve
+        </Button>
       )}
     </div>
   );
 }
+
 
 function AdminDashboardInner() {
   const { toast } = useToast();
@@ -134,6 +85,43 @@ function AdminDashboardInner() {
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [auditTicket, setAuditTicket] = useState<TicketRow | null>(null);
+  const [resolveTicket, setResolveTicket] = useState<TicketRow | null>(null);
+  const [navDrawerOpen, setNavDrawerOpen] = useState(false);
+  const [userLoc, setUserLoc] = useState<{ lat: number | null; lng: number | null; error: string | null }>({
+    lat: null, lng: null, error: null,
+  });
+
+  // Real-time geolocation watch
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setUserLoc(p => ({ ...p, error: "Geolocation unsupported" }));
+      return;
+    }
+    const opts: PositionOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude, error: null }),
+      (err) => setUserLoc(p => ({ ...p, error: err.message })),
+      opts,
+    );
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude, error: null }),
+      (err) => setUserLoc(p => ({ ...p, error: err.message })),
+      opts,
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+  // Open nav drawer when a ticket pin is selected
+  const handleTicketSelect = (id: string) => {
+    setSelectedTicketId(id);
+    setNavDrawerOpen(true);
+  };
+
+  const selectedTicket = useMemo(
+    () => tickets.find(t => t.id === selectedTicketId) || null,
+    [tickets, selectedTicketId]
+  );
+
 
   const filtered = useMemo(() => {
     const base = deptFilter === "All" ? tickets : tickets.filter(t => t.department === deptFilter);
@@ -174,46 +162,8 @@ function AdminDashboardInner() {
     );
   };
 
-  const handleResolve = async (id: string, file: File) => {
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `resolutions/${id}-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("ticket-photos").upload(path, file, { upsert: true, contentType: file.type });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("ticket-photos").getPublicUrl(path);
-      const resolution_image_url = pub.publicUrl;
 
-      await new Promise<void>((resolve, reject) => updateTicket.mutate(
-        {
-          id,
-          status: "Resolved",
-          resolved_at: new Date().toISOString(),
-          fixed_photo_url: resolution_image_url,
-          resolution_image_url,
-          ai_audit_status: "PROCESSING",
-        },
-        { onSuccess: () => resolve(), onError: (e) => reject(e) }
-      ));
 
-      toast({ title: "Resolution uploaded ✓", description: "AI Forensic Auditor is verifying the repair…" });
-
-      // Trigger AI verification (async, don't block)
-      supabase.functions.invoke("verify-resolution", { body: { ticket_id: id } })
-        .then(({ data, error }) => {
-          if (error) {
-            toast({ title: "AI Audit failed", description: error.message, variant: "destructive" });
-            return;
-          }
-          if (data?.status === "FAILED_FRAUD") {
-            toast({ title: "⚠️ Fraud detected", description: "Ticket reverted to In Progress. See Audit Trail.", variant: "destructive" });
-          } else if (data?.status === "VERIFIED_SUCCESS") {
-            toast({ title: `✓ AI Integrity Verified (${data.score}%)`, description: "Repair confirmed by forensic audit." });
-          }
-        });
-    } catch (e: any) {
-      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
-    }
-  };
 
   // Dept-specific stats
   const deptStats = useMemo(() => {
@@ -306,7 +256,7 @@ function AdminDashboardInner() {
           <div className="h-72 rounded-xl overflow-hidden border border-border">
             <AdminMap
               tickets={filtered}
-              onTicketSelect={setSelectedTicketId}
+              onTicketSelect={handleTicketSelect}
               selectedTicketId={selectedTicketId}
               showHeatmap={showHeatmap}
             />
@@ -374,8 +324,9 @@ function AdminDashboardInner() {
                       <AssignResolvePanel
                         ticket={ticket}
                         onAssign={handleAssign}
-                        onResolve={handleResolve}
+                        onOpenResolve={(t) => setResolveTicket(t)}
                       />
+
                     </>
                   )}
                 </div>
@@ -392,13 +343,31 @@ function AdminDashboardInner() {
         )}
       </div>
 
-      {/* Audit Modal */}
+      {/* Modals & drawers */}
       <AuditModal ticket={auditTicket} open={!!auditTicket} onClose={() => setAuditTicket(null)} />
+      <EvidenceClosureModal
+        ticket={resolveTicket}
+        open={!!resolveTicket}
+        onClose={() => setResolveTicket(null)}
+      />
+      <NavigationDrawer
+        ticket={selectedTicket}
+        open={navDrawerOpen && !!selectedTicket}
+        onClose={() => setNavDrawerOpen(false)}
+        userLat={userLoc.lat}
+        userLng={userLoc.lng}
+      />
+      {userLoc.error && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 rounded-full bg-warning/90 text-warning-foreground text-xs px-3 py-1 shadow-md">
+          ⚠ Live tracking unavailable: {userLoc.error}
+        </div>
+      )}
 
       <AppFooter />
     </div>
   );
 }
+
 
 export default function AdminDashboard() {
   return (
