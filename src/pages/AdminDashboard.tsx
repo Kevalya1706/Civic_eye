@@ -1,25 +1,27 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
-  Filter, CheckCircle, Upload, Eye, BarChart3, AlertTriangle, Loader2,
-  Map, Layers, Shield, ShieldAlert, DollarSign, Clock, TrendingUp,
-  FileText, Users, Zap
+  Filter, CheckCircle, Eye, BarChart3, AlertTriangle, Loader2,
+  Map, Layers, DollarSign, Clock,
+  FileText, Zap
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import TicketCard from "@/components/TicketCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DEPARTMENTS, type Department } from "@/lib/mockData";
 import { useToast } from "@/hooks/use-toast";
+import { toast as sonner } from "sonner";
 import AdminGuard from "@/components/AdminGuard";
 import AppFooter from "@/components/AppFooter";
 import { useAllTickets, useUpdateTicket, useUpvoteTicket, useNudgeTicket, type TicketRow } from "@/hooks/useTickets";
-import { supabase } from "@/integrations/supabase/client";
 import AdminMap from "@/components/admin/AdminMap";
 import VerificationBadge from "@/components/admin/VerificationBadge";
 import AuditModal from "@/components/admin/AuditModal";
+import EvidenceClosureModal from "@/components/admin/EvidenceClosureModal";
+import NavigationDrawer from "@/components/admin/NavigationDrawer";
 import { getTotalRepairedValue, formatCurrency, getTicketCost } from "@/components/admin/CostTracker";
+
 
 function StatCard({ label, value, icon: Icon, color, suffix }: { label: string; value: string | number; icon: React.ElementType; color: string; suffix?: string }) {
   return (
