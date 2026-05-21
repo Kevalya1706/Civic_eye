@@ -324,8 +324,9 @@ function AdminDashboardInner() {
                       <AssignResolvePanel
                         ticket={ticket}
                         onAssign={handleAssign}
-                        onResolve={handleResolve}
+                        onOpenResolve={(t) => setResolveTicket(t)}
                       />
+
                     </>
                   )}
                 </div>
