@@ -1,8 +1,14 @@
-import { useState } from "react";
-import { Shield, Lock, Fingerprint, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Shield, Lock, Fingerprint, Loader2, KeyRound } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import {
+  startAuthentication,
+  startRegistration,
+} from "@simplewebauthn/browser";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: React.ReactNode;
@@ -11,55 +17,104 @@ interface Props {
 const ADMIN_KEY = "MINIONS";
 
 export default function AdminGuard({ children }: Props) {
+  const navigate = useNavigate();
   const [unlocked, setUnlocked] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+  const [bioSupported, setBioSupported] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (
+          typeof window !== "undefined" &&
+          window.PublicKeyCredential &&
+          typeof window.PublicKeyCredential
+            .isUserVerifyingPlatformAuthenticatorAvailable === "function"
+        ) {
+          const ok = await window.PublicKeyCredential
+            .isUserVerifyingPlatformAuthenticatorAvailable();
+          setBioSupported(!!ok);
+        }
+      } catch {
+        setBioSupported(false);
+      }
+    })();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_KEY) {
       setUnlocked(true);
       setError(false);
+      navigate("/command", { replace: true });
     } else {
       setError(true);
     }
   };
 
   const handleBiometricLogin = async () => {
-    if (typeof window === "undefined" || !window.PublicKeyCredential || !navigator.credentials) {
-      toast("Biometrics skipped. Please enter manual access key.");
-      return;
-    }
     setScanning(true);
     try {
-      // 32-byte random challenge (client-side; in production this comes from the server)
-      const challenge = new Uint8Array(32);
-      crypto.getRandomValues(challenge);
-
-      const credential = await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          timeout: 60000,
-          userVerification: "required",
-          rpId: window.location.hostname,
-        },
-      } as CredentialRequestOptions);
-
-
-      if (credential) {
-        // Server-side @simplewebauthn/server verification stub — accepts the assertion locally
-        toast.success("✓ Biometric verified — entering Command Center");
-        setUnlocked(true);
-      } else {
-        toast("Biometrics skipped. Please enter manual access key.");
+      // PHASE 1 — fetch challenge from backend
+      const { data: optsData, error: optsErr } = await supabase.functions.invoke(
+        "webauthn-auth-options",
+        { body: {} },
+      );
+      if (optsErr) throw new Error(optsErr.message);
+      if (!optsData?.hasCredentials) {
+        toast("No passkey enrolled yet. Use the access key, then enroll a passkey from here.");
+        setScanning(false);
+        return;
       }
+
+      // PHASE 2 — engage native authenticator (userVerification: "required" enforced by server)
+      const assertion = await startAuthentication({ optionsJSON: optsData.options });
+
+      // PHASE 3 — verify on backend
+      const { data: verifyData, error: verifyErr } = await supabase.functions.invoke(
+        "webauthn-auth-verify",
+        { body: { assertion } },
+      );
+      if (verifyErr) throw new Error(verifyErr.message);
+      if (!verifyData?.verified) throw new Error("Signature mismatch");
+
+      toast.success("✓ Biometric verified — entering Command Center");
+      setUnlocked(true);
+      navigate("/command", { replace: true });
     } catch (err: any) {
-      toast(err?.name === "NotAllowedError"
-        ? "Biometrics skipped. Please enter manual access key."
-        : `Biometric unavailable: ${err?.message || "unknown"}. Please enter manual access key.`);
+      const name = err?.name || "";
+      const msg = name === "NotAllowedError" || name === "AbortError"
+        ? "Biometric validation bypassed. Please use manual access key."
+        : `Biometric validation bypassed (${err?.message || "unavailable"}). Please use manual access key.`;
+      toast(msg);
     } finally {
       setScanning(false);
+    }
+  };
+
+  const handleEnrollPasskey = async () => {
+    setEnrolling(true);
+    try {
+      const { data: optsData, error: optsErr } = await supabase.functions.invoke(
+        "webauthn-register-options",
+        { body: {} },
+      );
+      if (optsErr || !optsData) throw new Error(optsErr?.message || "Sign in first");
+
+      const attestation = await startRegistration({ optionsJSON: optsData });
+      const { data: vData, error: vErr } = await supabase.functions.invoke(
+        "webauthn-register-verify",
+        { body: { attestation, deviceName: navigator.userAgent.slice(0, 60) } },
+      );
+      if (vErr || !vData?.verified) throw new Error(vErr?.message || "Verification failed");
+      toast.success("Passkey enrolled — try biometric sign-in.");
+    } catch (err: any) {
+      toast(`Enrollment cancelled: ${err?.message || err?.name || "unknown"}`);
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -95,34 +150,48 @@ export default function AdminGuard({ children }: Props) {
             Authenticate
           </Button>
 
-          <div className="relative flex items-center gap-2 py-1">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
+          {bioSupported && (
+            <>
+              <div className="relative flex items-center gap-2 py-1">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wider">or</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
 
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full relative overflow-visible"
-            onClick={handleBiometricLogin}
-            disabled={scanning}
-          >
-            <span className="relative inline-flex items-center justify-center mr-2">
-              {scanning && (
-                <>
-                  <span className="absolute inset-0 -m-1 rounded-full bg-accent/40 animate-ping" />
-                  <span className="absolute inset-0 -m-2 rounded-full bg-accent/20 animate-ping [animation-delay:200ms]" />
-                </>
-              )}
-              {scanning ? (
-                <Loader2 className="h-4 w-4 animate-spin relative" />
-              ) : (
-                <Fingerprint className="h-4 w-4 relative" />
-              )}
-            </span>
-            {scanning ? "Scanning..." : "Sign in with Biometrics / Passkey"}
-          </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full relative overflow-visible"
+                onClick={handleBiometricLogin}
+                disabled={scanning}
+              >
+                <span className="relative inline-flex items-center justify-center mr-2">
+                  {scanning && (
+                    <>
+                      <span className="absolute inset-0 -m-1 rounded-full bg-accent/40 animate-ping" />
+                      <span className="absolute inset-0 -m-2 rounded-full bg-accent/20 animate-ping [animation-delay:200ms]" />
+                    </>
+                  )}
+                  {scanning ? (
+                    <Loader2 className="h-4 w-4 animate-spin relative" />
+                  ) : (
+                    <Fingerprint className="h-4 w-4 relative" />
+                  )}
+                </span>
+                {scanning ? "Scanning..." : "Sign in with Biometrics / Passkey"}
+              </Button>
+
+              <button
+                type="button"
+                onClick={handleEnrollPasskey}
+                disabled={enrolling}
+                className="w-full text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center justify-center gap-1.5 pt-1"
+              >
+                <KeyRound className="h-3 w-3" />
+                {enrolling ? "Enrolling passkey..." : "Enroll this device as a passkey"}
+              </button>
+            </>
+          )}
         </form>
       </div>
     </div>
