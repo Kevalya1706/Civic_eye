@@ -5,6 +5,7 @@ import { generateRegistrationOptions } from "npm:@simplewebauthn/server@10";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
@@ -64,8 +65,12 @@ Deno.serve(async (req) => {
     });
 
     return json(options);
-  } catch (e) {
-    return json({ error: String(e?.message || e) }, 500);
+  } catch (error: any) {
+    console.error("Cryptographic / Core Error:", error?.message || error);
+    return new Response(
+      JSON.stringify({ success: false, error: error?.message || "Internal validation exception occurred" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
 

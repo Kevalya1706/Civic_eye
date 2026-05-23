@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Camera, Shield, BarChart3, Users, ArrowRight, Eye, Zap, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
+import CityTypewriter from "@/components/CityTypewriter";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 const features = [
   { icon: Camera, title: "3-Second Reporting", desc: "Snap a photo, auto-geotagged with AI classification." },
@@ -19,6 +22,8 @@ const stats = [
 ];
 
 export default function Index() {
+  const geo = useGeolocation();
+  useEffect(() => { geo.requestLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -32,9 +37,12 @@ export default function Index() {
               <Zap className="h-4 w-4 text-accent" />
               AI-Powered Urban Governance
             </div>
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-gradient-navy leading-[1.1]">
-              Your City, <br />
-              <span className="relative">
+            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
+              <span className="block min-h-[1.1em]" style={{ color: "#1E293B" }}>
+                <CityTypewriter city={geo.parsedAddress?.city} loading={geo.loading} />
+                <span style={{ color: "#1E293B" }}>,</span>
+              </span>
+              <span className="relative text-gradient-navy">
                 Your Voice
                 <span className="absolute -bottom-2 left-0 w-full h-3 bg-accent/30 rounded-full -z-10" />
               </span>
