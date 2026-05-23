@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Camera, Shield, BarChart3, Users, ArrowRight, Eye, Zap, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
+import CityTypewriter from "@/components/CityTypewriter";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 const features = [
   { icon: Camera, title: "3-Second Reporting", desc: "Snap a photo, auto-geotagged with AI classification." },
