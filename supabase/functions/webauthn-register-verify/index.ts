@@ -73,8 +73,12 @@ Deno.serve(async (req) => {
 
     await admin.from("webauthn_challenges").delete().eq("id", ch.id);
     return json({ verified: true });
-  } catch (e) {
-    return json({ error: String(e?.message || e) }, 500);
+  } catch (error: any) {
+    console.error("Cryptographic / Core Error:", error?.message || error);
+    return new Response(
+      JSON.stringify({ success: false, error: error?.message || "Internal validation exception occurred" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
 
