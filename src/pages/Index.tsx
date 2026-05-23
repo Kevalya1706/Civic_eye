@@ -22,6 +22,8 @@ const stats = [
 ];
 
 export default function Index() {
+  const geo = useGeolocation();
+  useEffect(() => { geo.requestLocation(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
