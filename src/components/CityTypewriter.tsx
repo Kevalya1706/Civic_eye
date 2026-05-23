@@ -8,11 +8,11 @@ interface Props {
 const FALLBACK = "Your City";
 const TYPE_MS = 90;
 const DELETE_MS = 55;
-const HOLD_MS = 1000;
+const HOLD_MS = 1200;
 
-export default function CityTypewriter({ city, loading }: Props) {
-  const [display, setDisplay] = useState("");
-  const lastTargetRef = useRef<string>("");
+export default function CityTypewriter({ city }: Props) {
+  const [display, setDisplay] = useState(FALLBACK);
+  const lastTargetRef = useRef<string>(FALLBACK);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -26,28 +26,30 @@ export default function CityTypewriter({ city, loading }: Props) {
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-    const run = (current: string) => {
-      // Delete phase
-      if (current.length > 0 && !target.startsWith(current)) {
-        setDisplay(current.slice(0, -1));
-        timeoutRef.current = setTimeout(() => run(current.slice(0, -1)), DELETE_MS);
-        return;
-      }
-      // Type phase
-      if (current.length < target.length) {
-        const next = target.slice(0, current.length + 1);
-        setDisplay(next);
-        timeoutRef.current = setTimeout(() => run(next), TYPE_MS);
-        return;
-      }
+    const typeIn = (current: string) => {
+      if (current.length >= target.length) return;
+      const next = target.slice(0, current.length + 1);
+      setDisplay(next);
+      timeoutRef.current = setTimeout(() => typeIn(next), TYPE_MS);
     };
 
-    // If we already have content, hold briefly before swap (only when target changed mid-flight)
-    if (display.length > 0 && display !== target) {
-      timeoutRef.current = setTimeout(() => run(display), HOLD_MS);
-    } else {
-      run(display);
-    }
+    const deleteOut = (current: string) => {
+      if (current.length === 0) {
+        timeoutRef.current = setTimeout(() => typeIn(""), TYPE_MS);
+        return;
+      }
+      const next = current.slice(0, -1);
+      setDisplay(next);
+      timeoutRef.current = setTimeout(() => deleteOut(next), DELETE_MS);
+    };
+
+    timeoutRef.current = setTimeout(() => {
+      try {
+        deleteOut(display);
+      } catch {
+        setDisplay(FALLBACK);
+      }
+    }, HOLD_MS);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -56,15 +58,12 @@ export default function CityTypewriter({ city, loading }: Props) {
   }, [city]);
 
   return (
-    <span className="relative inline-block">
-      <span style={{ color: "#1E293B" }}>{display || "\u00A0"}</span>
-      <span
-        aria-hidden
-        className="inline-block ml-1 animate-pulse"
-        style={{ color: "#A3E635" }}
-      >
-        |
-      </span>
+    <span
+      className="inline-flex items-baseline align-baseline"
+      style={{ color: "#1E293B" }}
+    >
+      <span>{display}</span>
+      <span>,</span>
     </span>
   );
 }
