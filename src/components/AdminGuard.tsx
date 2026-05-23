@@ -55,6 +55,21 @@ export default function AdminGuard({ children }: Props) {
     }
   };
 
+  const extractFnError = async (err: any): Promise<string | null> => {
+    try {
+      const ctx = err?.context;
+      if (ctx && typeof ctx.json === "function") {
+        const body = await ctx.json();
+        if (body?.error) return String(body.error);
+      }
+      if (ctx && typeof ctx.text === "function") {
+        const t = await ctx.text();
+        if (t) return t;
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+
   const handleBiometricLogin = async () => {
     setScanning(true);
     try {
@@ -63,7 +78,12 @@ export default function AdminGuard({ children }: Props) {
         "webauthn-auth-options",
         { body: {} },
       );
-      if (optsErr) throw new Error(optsErr.message);
+      if (optsErr) {
+        const msg = (await extractFnError(optsErr)) || optsErr.message;
+        toast.error(`Authentication aborted: ${msg}`);
+        setScanning(false);
+        return;
+      }
       if (!optsData?.hasCredentials) {
         toast("No passkey enrolled yet. Use the access key, then enroll a passkey from here.");
         setScanning(false);
@@ -78,7 +98,12 @@ export default function AdminGuard({ children }: Props) {
         "webauthn-auth-verify",
         { body: { assertion } },
       );
-      if (verifyErr) throw new Error(verifyErr.message);
+      if (verifyErr) {
+        const msg = (await extractFnError(verifyErr)) || verifyErr.message;
+        toast.error(`Biometric bypass aborted: ${msg}`);
+        setScanning(false);
+        return;
+      }
       if (!verifyData?.verified) throw new Error("Signature mismatch");
 
       toast.success("✓ Biometric verified — entering Command Center");
