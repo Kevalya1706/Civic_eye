@@ -40,11 +40,6 @@ export default function Index() {
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
               <span className="block min-h-[1.1em]" style={{ color: "#1E293B" }}>
                 <CityTypewriter city={geo.parsedAddress?.city} loading={geo.loading} />
-                <span style={{ color: "#1E293B" }}>,</span>
-              </span>
-              <span className="relative text-gradient-navy">
-                Your Voice
-                <span className="absolute -bottom-2 left-0 w-full h-3 bg-accent/30 rounded-full -z-10" />
               </span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl mx-auto leading-relaxed">
