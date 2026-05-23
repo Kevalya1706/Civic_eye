@@ -61,8 +61,12 @@ Deno.serve(async (req) => {
     });
 
     return json({ options, hasCredentials: allowCreds.length > 0 });
-  } catch (e) {
-    return json({ error: String(e?.message || e) }, 500);
+  } catch (error: any) {
+    console.error("Cryptographic / Core Error:", error?.message || error);
+    return new Response(
+      JSON.stringify({ success: false, error: error?.message || "Internal validation exception occurred" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
   }
 });
 
