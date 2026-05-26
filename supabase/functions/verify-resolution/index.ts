@@ -59,7 +59,27 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   try {
+    // Require signed-in user — prevents anonymous tampering with ticket audit state
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      SUPABASE_URL,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { ticket_id } = await req.json();
+
     if (!ticket_id) throw new Error("ticket_id required");
 
     const { data: ticket, error } = await supabase.from("tickets").select("*").eq("id", ticket_id).single();
