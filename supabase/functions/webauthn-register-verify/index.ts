@@ -56,18 +56,31 @@ Deno.serve(async (req) => {
       return json({ error: "Verification failed" }, 400);
     }
 
-    const { credential } = verification.registrationInfo as any;
-    const credentialId: string = credential.id;
-    const publicKey: string = btoa(String.fromCharCode(...credential.publicKey));
-    const counter: number = credential.counter ?? 0;
-    const transports: string[] | undefined = credential.transports;
+    // Defensive extraction: support both v10 `credential` shape and legacy `credentialID`/`credentialPublicKey` shape
+    const regInfo: any = verification.registrationInfo;
+    const credObj = regInfo?.credential ?? {};
+    const rawId = credObj?.id ?? regInfo?.credentialID;
+    const rawPk = credObj?.publicKey ?? regInfo?.credentialPublicKey;
+    const counterVal: number = credObj?.counter ?? regInfo?.counter ?? 0;
+    const transportsVal: string[] | undefined =
+      credObj?.transports ?? attestation?.response?.transports ?? undefined;
+
+    if (!rawId || !rawPk) {
+      console.error("Missing credential fields", { hasCredObj: !!regInfo?.credential, keys: Object.keys(regInfo || {}) });
+      return json({ error: "Verification returned no credential data" }, 400);
+    }
+
+    const credentialId: string = typeof rawId === "string"
+      ? rawId
+      : btoa(String.fromCharCode(...new Uint8Array(rawId)));
+    const publicKey: string = btoa(String.fromCharCode(...new Uint8Array(rawPk)));
 
     await admin.from("webauthn_credentials").insert({
       user_id: userId,
       credential_id: credentialId,
       public_key: publicKey,
-      counter,
-      transports,
+      counter: counterVal,
+      transports: transportsVal,
       device_name: deviceName || "Passkey",
     });
 
