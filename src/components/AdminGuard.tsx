@@ -121,23 +121,60 @@ export default function AdminGuard({ children }: Props) {
   };
 
   const handleEnrollPasskey = async () => {
+    // PHASE 0 — Access Key gate (replay-attack shield)
+    if (password !== ADMIN_KEY) {
+      setError(true);
+      toast.error("Enter the valid Access Key before enrolling a passkey.");
+      return;
+    }
     setEnrolling(true);
     try {
+      if (typeof window === "undefined" || !window.PublicKeyCredential) {
+        throw new Error("Biometric authentication protocols are disabled or unsupported by this device browser context.");
+      }
+
+      // PHASE 1 — fetch cryptographically secure challenge from Edge Function
       const { data: optsData, error: optsErr } = await supabase.functions.invoke(
         "webauthn-register-options",
         { body: {} },
       );
-      if (optsErr || !optsData) throw new Error(optsErr?.message || "Sign in first");
+      if (optsErr || !optsData) {
+        const msg = optsErr ? (await extractFnError(optsErr)) || optsErr.message : "Sign in first";
+        throw new Error(msg);
+      }
 
+      // PHASE 2 — hardware capture (SimpleWebAuthn handles base64url encoding safely)
       const attestation = await startRegistration({ optionsJSON: optsData });
+
+      // PHASE 3 — server-side attestation verification before mutating credentials
       const { data: vData, error: vErr } = await supabase.functions.invoke(
         "webauthn-register-verify",
         { body: { attestation, deviceName: navigator.userAgent.slice(0, 60) } },
       );
-      if (vErr || !vData?.verified) throw new Error(vErr?.message || "Verification failed");
-      toast.success("Passkey enrolled — try biometric sign-in.");
+      if (vErr || !vData?.verified) {
+        const msg = vErr ? (await extractFnError(vErr)) || vErr.message : "Verification failed";
+        throw new Error(msg);
+      }
+      toast.success("✓ Biometric Passkey Enrolled! You can now log in using only your fingerprint.");
     } catch (err: any) {
-      toast(`Enrollment cancelled: ${err?.message || err?.name || "unknown"}`);
+      console.error("WebAuthn Failure Context:", err);
+      const name = err?.name || "";
+      const msg = String(err?.message || "");
+      if (
+        name === "SecurityError" ||
+        msg.includes("enabled") ||
+        msg.includes("document") ||
+        msg.includes("sandbox") ||
+        msg.includes("not allowed")
+      ) {
+        toast.error(
+          "🔒 Sandbox Block: Click the 'Open in New Tab' arrow icon in the top-right of the preview to unlock device fingerprint sensors.",
+        );
+      } else if (name === "NotAllowedError" || name === "AbortError") {
+        toast(`Enrollment cancelled.`);
+      } else {
+        toast.error(msg || "Biometric authentication setup failed.");
+      }
     } finally {
       setEnrolling(false);
     }
