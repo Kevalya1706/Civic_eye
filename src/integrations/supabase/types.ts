@@ -488,6 +488,7 @@ export type Database = {
     }
     Functions: {
       calc_social_cost: { Args: { _ticket_id: string }; Returns: number }
+      get_my_email: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
