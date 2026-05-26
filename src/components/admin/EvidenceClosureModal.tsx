@@ -235,8 +235,8 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
             disabled={!file || frozen || isVerified}
             onClick={handleSubmit}
           >
-            {phase === "uploading" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading…</>}
-            {phase === "processing" && <>🤖 AI Auditing Repair Quality... Please hold</>}
+            {phase === "uploading" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> 🤖 Uploading & Launching AI Audit Pipeline...</>}
+            {phase === "processing" && <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> 🤖 AI Auditing Repair Quality... Please hold</>}
             {phase === "verified" && <>✓ Resolved</>}
             {(phase === "idle" || phase === "fraud") && "Upload Fix Photo to Resolve"}
           </Button>
