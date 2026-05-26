@@ -78,11 +78,42 @@ function gmaps(lat: number, lng: number) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Auth: allow either pg_cron via CRON_SECRET bearer, or a signed-in commissioner/hod user.
+  const authHeader = req.headers.get("Authorization") || "";
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const isCron = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+  if (!isCron) {
+    if (!authHeader.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(
+      SUPABASE_URL,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: isCommish } = await userClient.rpc("has_role", { _user_id: user.id, _role: "commissioner" });
+    const { data: isHod } = await userClient.rpc("has_role", { _user_id: user.id, _role: "hod" });
+    if (!isCommish && !isHod) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const summary = { social_cost_updates: 0, briefings_sent: 0, press_dispatched: 0, errors: [] as string[] };
 
   try {
     // 1. Fetch all unresolved tickets
+
     const { data: tickets, error } = await supabase
       .from("tickets")
       .select("*")
