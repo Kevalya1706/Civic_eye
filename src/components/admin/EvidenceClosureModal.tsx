@@ -37,6 +37,13 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
   const updateTicket = useUpdateTicket();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Memory management: revoke blob URLs on unmount/change to prevent leaks
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
   // Reset when modal closes or ticket changes
   useEffect(() => {
     if (!open) {
@@ -78,7 +85,6 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
   const handleFile = (f: File | null) => {
     if (!f) return;
     setFile(f);
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(f));
   };
 
@@ -87,8 +93,10 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
     setPhase("uploading");
     try {
       const ts = Date.now();
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = `resolutions/${ticket.id}_${ts}.${ext === "jpeg" ? "jpg" : ext}`;
+      const parts = file.name.split(".");
+      const rawExt = parts.length > 1 ? parts.pop()?.toLowerCase() : "jpg";
+      const ext = rawExt === "jpeg" ? "jpg" : (rawExt || "jpg");
+      const path = `resolutions/${ticket.id}_${ts}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from("ticket-photos")
         .upload(path, file, { upsert: true, contentType: file.type });
@@ -134,7 +142,6 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
         setCritique(eng);
         setPhase("fraud");
         setFile(null);
-        if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
         if (fileInputRef.current) fileInputRef.current.value = "";
         await new Promise<void>((resolve) =>
