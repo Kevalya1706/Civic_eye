@@ -33,6 +33,7 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
   const [score, setScore] = useState<number | null>(null);
   const [critique, setCritique] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [beforeImgState, setBeforeImgState] = useState<ImgState>("loading");
   const updateTicket = useUpdateTicket();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
