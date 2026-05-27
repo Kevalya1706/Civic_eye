@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, Eye, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Upload, Eye, Loader2, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { TicketRow } from "@/hooks/useTickets";
@@ -13,6 +13,18 @@ interface Props {
   onClose: () => void;
 }
 
+type ImgState = "loading" | "success" | "error";
+
+function resolveTicketImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s) || s.startsWith("data:") || s.startsWith("blob:")) return s;
+  const cleaned = s.replace(/^\/+/, "").replace(/^ticket-photos\//, "");
+  const { data } = supabase.storage.from("ticket-photos").getPublicUrl(cleaned);
+  return data?.publicUrl || null;
+}
+
 type Phase = "idle" | "uploading" | "processing" | "verified" | "fraud";
 
 export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
@@ -21,6 +33,7 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
   const [score, setScore] = useState<number | null>(null);
   const [critique, setCritique] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [beforeImgState, setBeforeImgState] = useState<ImgState>("loading");
   const updateTicket = useUpdateTicket();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,9 +62,18 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
 
   if (!ticket) return null;
 
-  const beforeImg = ticket.image_url || ticket.photo_url;
-  const repairImg = previewUrl || ticket.resolution_image_url || ticket.fixed_photo_url;
+  const beforeImg = useMemo(
+    () => resolveTicketImageUrl(ticket.image_url || ticket.photo_url),
+    [ticket.image_url, ticket.photo_url]
+  );
+  const repairImg = previewUrl
+    || resolveTicketImageUrl(ticket.resolution_image_url || ticket.fixed_photo_url);
   const frozen = phase === "uploading" || phase === "processing";
+
+  // Reset before-image load state whenever the URL changes
+  useEffect(() => {
+    setBeforeImgState(beforeImg ? "loading" : "error");
+  }, [beforeImg]);
 
   const handleFile = (f: File | null) => {
     if (!f) return;
@@ -158,11 +180,30 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
             {/* BEFORE */}
             <div className={`rounded-xl border p-3 space-y-2 ${isFraud ? "border-destructive/40" : "border-border"}`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before Photo</p>
-              <div className="h-40 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
-                {beforeImg ? (
-                  <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted-foreground animate-pulse">Fetching Original Evidence...</span>
+              <div className="relative h-40 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+                {beforeImg && beforeImgState !== "error" && (
+                  <img
+                    src={beforeImg}
+                    alt="Before"
+                    onLoad={() => setBeforeImgState("success")}
+                    onError={() => setBeforeImgState("error")}
+                    className={`w-full h-full object-cover transition-opacity duration-200 ${
+                      beforeImgState === "success" ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                )}
+                {beforeImg && beforeImgState === "loading" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+                    <span className="text-xs text-muted-foreground">Fetching Original Evidence...</span>
+                  </div>
+                )}
+                {(!beforeImg || beforeImgState === "error") && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-muted text-center px-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    <span className="text-xs font-medium text-destructive">
+                      Original Image Missing or Unreachable
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
