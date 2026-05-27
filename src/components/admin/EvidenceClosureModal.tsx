@@ -60,20 +60,20 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
     }
   }, [ticket]);
 
-  if (!ticket) return null;
-
   const beforeImg = useMemo(
-    () => resolveTicketImageUrl(ticket.image_url || ticket.photo_url),
-    [ticket.image_url, ticket.photo_url]
+    () => resolveTicketImageUrl(ticket?.image_url || ticket?.photo_url),
+    [ticket?.image_url, ticket?.photo_url]
   );
   const repairImg = previewUrl
-    || resolveTicketImageUrl(ticket.resolution_image_url || ticket.fixed_photo_url);
+    || resolveTicketImageUrl(ticket?.resolution_image_url || ticket?.fixed_photo_url);
   const frozen = phase === "uploading" || phase === "processing";
 
   // Reset before-image load state whenever the URL changes
   useEffect(() => {
     setBeforeImgState(beforeImg ? "loading" : "error");
   }, [beforeImg]);
+
+  if (!ticket) return null;
 
   const handleFile = (f: File | null) => {
     if (!f) return;
