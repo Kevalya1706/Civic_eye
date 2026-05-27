@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Upload, Eye, Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Upload, Eye, Loader2, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { TicketRow } from "@/hooks/useTickets";
@@ -11,6 +11,18 @@ interface Props {
   ticket: TicketRow | null;
   open: boolean;
   onClose: () => void;
+}
+
+type ImgState = "loading" | "success" | "error";
+
+function resolveTicketImageUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const s = raw.trim();
+  if (!s) return null;
+  if (/^https?:\/\//i.test(s) || s.startsWith("data:") || s.startsWith("blob:")) return s;
+  const cleaned = s.replace(/^\/+/, "").replace(/^ticket-photos\//, "");
+  const { data } = supabase.storage.from("ticket-photos").getPublicUrl(cleaned);
+  return data?.publicUrl || null;
 }
 
 type Phase = "idle" | "uploading" | "processing" | "verified" | "fraud";
