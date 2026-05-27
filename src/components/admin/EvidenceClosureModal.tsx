@@ -180,11 +180,30 @@ export default function EvidenceClosureModal({ ticket, open, onClose }: Props) {
             {/* BEFORE */}
             <div className={`rounded-xl border p-3 space-y-2 ${isFraud ? "border-destructive/40" : "border-border"}`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Before Photo</p>
-              <div className="h-40 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
-                {beforeImg ? (
-                  <img src={beforeImg} alt="Before" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs text-muted-foreground animate-pulse">Fetching Original Evidence...</span>
+              <div className="relative h-40 rounded-lg bg-muted overflow-hidden flex items-center justify-center">
+                {beforeImg && beforeImgState !== "error" && (
+                  <img
+                    src={beforeImg}
+                    alt="Before"
+                    onLoad={() => setBeforeImgState("success")}
+                    onError={() => setBeforeImgState("error")}
+                    className={`w-full h-full object-cover transition-opacity duration-200 ${
+                      beforeImgState === "success" ? "opacity-100" : "opacity-0"
+                    }`}
+                  />
+                )}
+                {beforeImg && beforeImgState === "loading" && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted animate-pulse">
+                    <span className="text-xs text-muted-foreground">Fetching Original Evidence...</span>
+                  </div>
+                )}
+                {(!beforeImg || beforeImgState === "error") && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-muted text-center px-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                    <span className="text-xs font-medium text-destructive">
+                      Original Image Missing or Unreachable
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
