@@ -55,26 +55,44 @@ Deno.serve(async (req) => {
 
     const publicKeyBytes = Uint8Array.from(atob(cred.public_key), (c) => c.charCodeAt(0));
 
+    // Dual-shape argument: @simplewebauthn/server v10 destructures `authenticator`
+    // ({ credentialID, credentialPublicKey, counter }), while v11+ renamed it to
+    // `credential` ({ id, publicKey, counter }). Supplying both keeps the call
+    // valid across versions and prevents `undefined.counter` crashes.
+    const storedCounter = Number(cred.counter ?? 0);
+    const authenticatorShape = {
+      credentialID: cred.credential_id,
+      credentialPublicKey: publicKeyBytes,
+      id: cred.credential_id,
+      publicKey: publicKeyBytes,
+      counter: storedCounter,
+      transports: cred.transports || undefined,
+    };
+
     const verification = await verifyAuthenticationResponse({
       response: assertion,
       expectedChallenge: challengeRow.challenge,
       expectedOrigin: origin,
       expectedRPID: rpID,
-      credential: {
-        id: cred.credential_id,
-        publicKey: publicKeyBytes,
-        counter: Number(cred.counter || 0),
-        transports: cred.transports || undefined,
-      },
+      authenticator: authenticatorShape,
+      credential: authenticatorShape,
       requireUserVerification: true,
+    } as any);
+
+    console.log("[webauthn-auth-verify] verification result", {
+      verified: verification.verified,
+      newCounter: verification.authenticationInfo?.newCounter ?? null,
     });
 
     if (!verification.verified) return json({ error: "Verification failed" }, 401);
 
+    const updatedCounter =
+      verification.authenticationInfo?.newCounter ?? storedCounter + 1;
+
     await admin
       .from("webauthn_credentials")
       .update({
-        counter: verification.authenticationInfo.newCounter,
+        counter: updatedCounter,
         last_used_at: new Date().toISOString(),
       })
       .eq("id", cred.id);

@@ -52,12 +52,19 @@ export default function AdminGuard({ children }: Props) {
     })();
   }, []);
 
+  const grantAccess = () => {
+    try {
+      sessionStorage.setItem(UNLOCK_KEY, "true");
+    } catch { /* ignore storage errors */ }
+    setUnlocked(true);
+    setError(false);
+    navigate("/command", { replace: true });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_KEY) {
-      setUnlocked(true);
-      setError(false);
-      navigate("/command", { replace: true });
+      grantAccess();
     } else {
       setError(true);
     }
@@ -115,8 +122,7 @@ export default function AdminGuard({ children }: Props) {
       if (!verifyData?.verified) throw new Error("Signature mismatch");
 
       toast.success("✓ Biometric verified — entering Command Center");
-      setUnlocked(true);
-      navigate("/command", { replace: true });
+      grantAccess();
     } catch (err: any) {
       const name = err?.name || "";
       const msg = name === "NotAllowedError" || name === "AbortError"
