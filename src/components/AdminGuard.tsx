@@ -16,9 +16,17 @@ interface Props {
 
 const ADMIN_KEY = "MINIONS";
 
+const UNLOCK_KEY = "civiceye_admin_unlocked";
+
 export default function AdminGuard({ children }: Props) {
   const navigate = useNavigate();
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(UNLOCK_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);

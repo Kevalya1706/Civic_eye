@@ -24,7 +24,17 @@ Deno.serve(async (req) => {
       .select("*")
       .eq("credential_id", assertion.id)
       .maybeSingle();
-    if (!cred) return json({ error: "Unknown credential" }, 404);
+    console.log("[webauthn-auth-verify] credential lookup", {
+      assertionId: assertion.id,
+      found: !!cred,
+      storedCounter: cred?.counter ?? null,
+    });
+    if (!cred) {
+      return json(
+        { error: "No registered passkey found for this device. Please register first." },
+        404,
+      );
+    }
 
     // Look up the most recent unexpired challenge for this user
     const { data: ch } = await admin
