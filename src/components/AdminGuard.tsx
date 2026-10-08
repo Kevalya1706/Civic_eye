@@ -16,9 +16,17 @@ interface Props {
 
 const ADMIN_KEY = "MINIONS";
 
+const UNLOCK_KEY = "civiceye_admin_unlocked";
+
 export default function AdminGuard({ children }: Props) {
   const navigate = useNavigate();
-  const [unlocked, setUnlocked] = useState(false);
+  const [unlocked, setUnlocked] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem(UNLOCK_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -44,12 +52,19 @@ export default function AdminGuard({ children }: Props) {
     })();
   }, []);
 
+  const grantAccess = () => {
+    try {
+      sessionStorage.setItem(UNLOCK_KEY, "true");
+    } catch { /* ignore storage errors */ }
+    setUnlocked(true);
+    setError(false);
+    navigate("/command", { replace: true });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === ADMIN_KEY) {
-      setUnlocked(true);
-      setError(false);
-      navigate("/command", { replace: true });
+      grantAccess();
     } else {
       setError(true);
     }
@@ -107,8 +122,7 @@ export default function AdminGuard({ children }: Props) {
       if (!verifyData?.verified) throw new Error("Signature mismatch");
 
       toast.success("✓ Biometric verified — entering Command Center");
-      setUnlocked(true);
-      navigate("/command", { replace: true });
+      grantAccess();
     } catch (err: any) {
       const name = err?.name || "";
       const msg = name === "NotAllowedError" || name === "AbortError"
